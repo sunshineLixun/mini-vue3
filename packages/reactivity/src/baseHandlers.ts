@@ -1,3 +1,4 @@
+import { track } from './effect';
 import { ReactiveFlags } from './reactive';
 
 export const mutableHandlers: ProxyHandler<object> = {
@@ -10,6 +11,9 @@ export const mutableHandlers: ProxyHandler<object> = {
 			// 这里表明target是代理对象
 			return true;
 		}
+
+		track(target, key);
+
 		return Reflect.get(target, key, receiver);
 	}
 };
