@@ -95,3 +95,38 @@ export function track(target: object, key: unknown) {
 		}
 	}
 }
+
+/**
+ * 触发依赖更新
+ * @param target
+ * @param key
+ * @param newValue
+ * @param oldValue
+ */
+export function trigger(target: object, key: unknown, newValue: unknown, oldValue: unknown) {
+	const depsMap = targetMap.get(target);
+	// 没有收集该对象
+	if (!depsMap) {
+		return;
+	}
+
+	const deps = depsMap.get(key);
+	if (deps) {
+		deps.forEach(effect => {
+			/**
+			 * effect(() => {
+			 * 		state.name = 123123
+			 * })
+			 *
+			 * 为了防止在依赖中更新响应式数据，造成死循环，这里要做判断，
+			 * 如果当前正在执行的effect === 全局中activeEffect，表明此effect正在执行
+			 *
+			 */
+			if (activeEffect !== effect) {
+				// 更新依赖
+				// 每次执行run都会重新收集依赖， run() 会访问响应式数据的数值，触发get方法 -> track
+				effect.run();
+			}
+		});
+	}
+}
