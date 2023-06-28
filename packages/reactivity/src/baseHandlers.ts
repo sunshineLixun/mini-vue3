@@ -1,3 +1,4 @@
+import { hasChanged } from '@vue/shared';
 import { track, trigger } from './effect';
 import { ReactiveFlags } from './reactive';
 
@@ -8,7 +9,7 @@ export const mutableHandlers: ProxyHandler<object> = {
 		const result = Reflect.set(target, key, newValue, receiver);
 
 		// 新值老值不相等，触发依赖更新
-		if (oldValue !== newValue) {
+		if (hasChanged(newValue, oldValue)) {
 			trigger(target, key, newValue, oldValue);
 		}
 

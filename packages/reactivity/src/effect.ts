@@ -47,6 +47,9 @@ export class ReactiveEffect<T = any> {
 		try {
 			this.parent = activeEffect;
 			activeEffect = this;
+
+			// 执行依赖回调之前，先清空收集的effects
+			cleanupEffect(this);
 			return this.fn();
 		} finally {
 			// e1
@@ -110,9 +113,20 @@ export function trigger(target: object, key: unknown, newValue: unknown, oldValu
 		return;
 	}
 
-	const deps = depsMap.get(key);
-	if (deps) {
-		deps.forEach(effect => {
+	let deps: (Dep | undefined)[] = [];
+	if (key !== undefined) {
+		deps.push(depsMap.get(key));
+	}
+
+	// copy一份deps，清理依赖时候，防止死循环
+	const effects: ReactiveEffect[] = [];
+	for (const dep of deps) {
+		if (dep) {
+			effects.push(...dep);
+		}
+	}
+	if (effects) {
+		effects.forEach(effect => {
 			/**
 			 * effect(() => {
 			 * 		state.name = 123123
@@ -128,5 +142,19 @@ export function trigger(target: object, key: unknown, newValue: unknown, oldValu
 				effect.run();
 			}
 		});
+	}
+}
+
+/**
+ * 清理依赖
+ * @param effect 当前的effect
+ */
+export function cleanupEffect(effect: ReactiveEffect) {
+	const { deps } = effect;
+	if (deps.length) {
+		for (let index = 0; index < deps.length; index++) {
+			deps[index].delete(effect);
+		}
+		deps.length = 0;
 	}
 }
