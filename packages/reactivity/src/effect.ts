@@ -10,7 +10,10 @@ export let activeEffect: ReactiveEffect | undefined;
 // 	 }
 const targetMap = new WeakMap<any, Map<any, Dep>>();
 
+export type EffectScheduler = (...args: any[]) => any;
+
 export class ReactiveEffect<T = any> {
+	// 标记当前effect是否是激活状态，如果是激活状态，会触发依赖收集
 	active = true;
 	// 收集当前激活的activeEffect
 	deps: Dep[] = [];
@@ -36,7 +39,7 @@ export class ReactiveEffect<T = any> {
 	 * e1 -> e2 -> e1
 	 */
 	parent: ReactiveEffect | undefined = undefined;
-	constructor(public fn: () => T) {}
+	constructor(public fn: () => T, public scheduler: EffectScheduler | null = null) {}
 
 	run() {
 		// 如果不是激活态，直接返回回调函数执行结果
@@ -57,11 +60,38 @@ export class ReactiveEffect<T = any> {
 			this.parent = undefined;
 		}
 	}
+
+	stop() {
+		if (this.active) {
+			cleanupEffect(this);
+			this.active = false;
+		}
+	}
 }
 
-export function effect<T = any>(fn: () => T) {
-	const _effect = new ReactiveEffect(fn);
-	_effect.run();
+export interface ReactiveEffectRunner<T = any> {
+	(): T;
+	effect: ReactiveEffect;
+}
+
+export interface ReactiveEffectOptions {
+	scheduler?: EffectScheduler;
+}
+
+export function effect<T = any>(fn: () => T, options?: ReactiveEffectOptions) {
+	const _effect = new ReactiveEffect(fn, options.scheduler);
+
+	if (!options) {
+		_effect.run();
+	}
+
+	const runner = _effect.run.bind(_effect) as ReactiveEffectRunner;
+	runner.effect = _effect;
+	return runner;
+}
+
+export function stop(runner: ReactiveEffectRunner) {
+	runner.effect.stop();
 }
 
 /**
@@ -137,9 +167,12 @@ export function trigger(target: object, key: unknown, newValue: unknown, oldValu
 			 *
 			 */
 			if (activeEffect !== effect) {
-				// 更新依赖
-				// 每次执行run都会重新收集依赖， run() 会访问响应式数据的数值，触发get方法 -> track
-				effect.run();
+				if (effect.scheduler) {
+					effect.scheduler();
+				} else {
+					// 更新依赖
+					effect.run();
+				}
 			}
 		});
 	}
