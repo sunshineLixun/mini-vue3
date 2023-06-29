@@ -12,6 +12,15 @@ const targetMap = new WeakMap<any, Map<any, Dep>>();
 
 export type EffectScheduler = (...args: any[]) => any;
 
+export interface ReactiveEffectRunner<T = any> {
+	(): T;
+	effect: ReactiveEffect;
+}
+
+export interface ReactiveEffectOptions {
+	scheduler?: EffectScheduler;
+}
+
 export class ReactiveEffect<T = any> {
 	// 标记当前effect是否是激活状态，如果是激活状态，会触发依赖收集
 	active = true;
@@ -67,15 +76,6 @@ export class ReactiveEffect<T = any> {
 			this.active = false;
 		}
 	}
-}
-
-export interface ReactiveEffectRunner<T = any> {
-	(): T;
-	effect: ReactiveEffect;
-}
-
-export interface ReactiveEffectOptions {
-	scheduler?: EffectScheduler;
 }
 
 export function effect<T = any>(fn: () => T, options?: ReactiveEffectOptions) {

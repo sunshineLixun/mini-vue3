@@ -10,6 +10,7 @@ export const mutableHandlers: ProxyHandler<object> = {
 
 		// 新值老值不相等，触发依赖更新
 		if (hasChanged(newValue, oldValue)) {
+			// 触发更新
 			trigger(target, key, newValue, oldValue);
 		}
 
@@ -21,6 +22,7 @@ export const mutableHandlers: ProxyHandler<object> = {
 			return true;
 		}
 
+		// 依赖收集
 		track(target, key);
 
 		return Reflect.get(target, key, receiver);
