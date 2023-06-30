@@ -1,6 +1,6 @@
-import { hasChanged } from '@vue/shared';
+import { hasChanged, isObject } from '@vue/shared';
 import { track, trigger } from './effect';
-import { ReactiveFlags } from './reactive';
+import { ReactiveFlags, reactive } from './reactive';
 
 export const mutableHandlers: ProxyHandler<object> = {
 	set(target, key, newValue, receiver) {
@@ -25,6 +25,13 @@ export const mutableHandlers: ProxyHandler<object> = {
 		// 依赖收集
 		track(target, key);
 
-		return Reflect.get(target, key, receiver);
+		const res = Reflect.get(target, key, receiver);
+
+		// 处理深层次响应式对象，如果返回值是对象，需要再对 对象 做一次代理
+		if (isObject(res)) {
+			return reactive(res);
+		}
+
+		return res;
 	}
 };
