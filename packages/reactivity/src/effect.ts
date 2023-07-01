@@ -180,7 +180,7 @@ export function trigger(target: object, key: unknown, newValue: unknown, oldValu
 
 /**
  * 清理依赖
- * @param effect 当前的effect
+ * @param effect 当前的effect
  */
 export function cleanupEffect(effect: ReactiveEffect) {
 	const { deps } = effect;
