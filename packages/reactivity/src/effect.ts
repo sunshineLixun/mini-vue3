@@ -22,6 +22,8 @@ export interface ReactiveEffectOptions {
 	scheduler?: EffectScheduler;
 }
 
+// 基类：作为响应式系统的最底层的提供者，computed、watch都是基于ReactiveEffect来做，内部保存着当前收集依赖的重要属性deps
+// 核心方法：run，记录当前的activeEffect，表明proxy对象get方法是否是在effect中，是就会触发依赖收集。
 export class ReactiveEffect<T = any> {
 	// 标记当前effect是否是激活状态，如果是激活状态，会触发依赖收集
 	active = true;
