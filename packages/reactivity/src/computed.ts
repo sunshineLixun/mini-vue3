@@ -1,5 +1,5 @@
 import { NOOP, isFunction } from '@vue/shared';
-import { ReactiveEffect } from './effect';
+import { ReactiveEffect, activeEffect, trackEffects, triggerEffects } from './effect';
 import { Dep } from './dep';
 
 export interface ComputedRef<T = any> extends WritableComputedRef<T> {
@@ -19,7 +19,7 @@ export type ComputedGetter<T> = (...args: any[]) => T;
 export type ComputedSetter<T> = (v: T) => void;
 
 class ComputedRefImpl<T> {
-	// 收集当前的effect
+	// 收集当前的effect， 作用：当改变计算属性的值，也要触发effect依赖更新
 	public dep: Dep = undefined;
 
 	// 内部缓存计算过后的值
@@ -32,9 +32,13 @@ class ComputedRefImpl<T> {
 	public readonly effect: ReactiveEffect<T>;
 
 	constructor(public getter: ComputedGetter<T>, private readonly _setter: ComputedSetter<T>) {
+		// 这里的 ReactiveEffect第二个回调触发时机：当proxy对象属性触发了set
 		this.effect = new ReactiveEffect(getter, () => {
+			// 这里说明有新的依赖值有变化，重置脏检查
 			if (!this._dirty) {
 				this._dirty = true;
+				// 触发收集的effect
+				triggerEffects(this.dep);
 			}
 		});
 	}
@@ -51,8 +55,12 @@ class ComputedRefImpl<T> {
 	 * ```
 	 */
 	get value() {
+		if (activeEffect) {
+			// 如果有activeEffect，说明这个计算属性在effect中使用，计算属性需要收集这个effect
+			trackEffects(this.dep || (this.dep = new Set<ReactiveEffect>()));
+		}
+
 		// 如果是脏的，表明没有用过，需要执行effect获取新的值
-		// TODO:收集依赖
 		if (this._dirty) {
 			// 标记为用过
 			this._dirty = false;
@@ -67,6 +75,7 @@ class ComputedRefImpl<T> {
 	 * ```js
 	 * const fullName = computed(() => state.firstName + state.secoedName)
 	 * fullName.value = 'mini vue3'
+	 * 对计算属性赋值，也会触发页面更新
 	 * ```
 	 */
 	set value(newValue: T) {
@@ -79,13 +88,12 @@ export function computed<T>(options: WritableComputedOptions<T>): WritableComput
 export function computed<T>(getterOrOptions: ComputedGetter<T> | WritableComputedOptions<T>) {
 	let setter: ComputedSetter<T>;
 	let getter: ComputedGetter<T>;
-
 	const onlyGetter = isFunction(getterOrOptions);
 	if (onlyGetter) {
 		getter = getterOrOptions;
 		setter = NOOP;
 	} else {
-		setter = getterOrOptions.set;
+		setter = getterOrOptions.set || NOOP;
 		getter = getterOrOptions.get;
 	}
 

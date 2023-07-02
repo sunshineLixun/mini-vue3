@@ -5,3 +5,5 @@ export const hasChanged = (value: any, oldValue: any): boolean => !Object.is(val
 export const isFunction = (val: unknown): val is Function => typeof val === 'function';
 
 export const NOOP = () => {};
+
+export const isArray = Array.isArray;

@@ -1,4 +1,5 @@
-import { Dep } from './dep';
+import { isArray } from '@vue/shared';
+import { Dep, createDep } from './dep';
 
 // 全局的effect
 export let activeEffect: ReactiveEffect | undefined;
@@ -48,6 +49,9 @@ export class ReactiveEffect<T = any> {
 	 * e1 -> e2 -> e1
 	 */
 	parent: ReactiveEffect | undefined = undefined;
+	// scheduler记录着：proxy对象set了新的值，会触发scheduler回调
+	// 这里也可以认为是 proxy对象的属性发生了变化
+
 	constructor(public fn: () => T, public scheduler: EffectScheduler | null = null) {}
 
 	run() {
@@ -79,7 +83,7 @@ export class ReactiveEffect<T = any> {
 }
 
 export function effect<T = any>(fn: () => T, options?: ReactiveEffectOptions) {
-	const _effect = new ReactiveEffect(fn, options.scheduler);
+	const _effect = new ReactiveEffect(fn, options?.scheduler);
 
 	if (!options) {
 		_effect.run();
@@ -109,6 +113,7 @@ export function stop(runner: ReactiveEffectRunner) {
  * @param key
  */
 export function track(target: object, key: unknown) {
+	console.log('track', activeEffect);
 	if (activeEffect) {
 		// 说明当前取值操作发生在effect中
 		let depsMap = targetMap.get(target);
@@ -120,12 +125,16 @@ export function track(target: object, key: unknown) {
 		if (!dep) {
 			depsMap.set(key, (dep = new Set<ReactiveEffect>()));
 		}
-		let shouldTrack = !dep.has(activeEffect);
-		if (shouldTrack) {
-			// 如果Set中没有当前激活的activeEffect，需要做收集
-			dep.add(activeEffect);
-			activeEffect.deps.push(dep);
-		}
+		trackEffects(dep);
+	}
+}
+
+export function trackEffects(dep: Dep) {
+	let shouldTrack = !dep.has(activeEffect);
+	if (shouldTrack) {
+		// 如果Set中没有当前激活的activeEffect，需要做收集
+		dep.add(activeEffect);
+		activeEffect.deps.push(dep);
 	}
 }
 
@@ -155,6 +164,11 @@ export function trigger(target: object, key: unknown, newValue: unknown, oldValu
 			effects.push(...dep);
 		}
 	}
+	triggerEffects(createDep(effects));
+}
+
+export function triggerEffects(dep: Dep | ReactiveEffect[]) {
+	const effects = isArray(dep) ? dep : [...dep];
 	if (effects) {
 		effects.forEach(effect => {
 			/**
