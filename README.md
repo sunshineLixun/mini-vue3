@@ -4,6 +4,6 @@
 
 todo:
 
-- [ ] reactivity
-- [ ] shared
+- [x] reactivity
+- [x] shared
 - [ ] ...
