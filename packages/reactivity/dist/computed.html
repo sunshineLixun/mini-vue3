@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>mini vue3</title>
+	</head>
+	<body>
+		<div id="app"></div>
+		<script type="module">
+			import { reactive, computed, effect } from './reactivity.esm.js';
+
+			const obj = { flag: true, name: 'xx', age: 10, foo: { a: 1, b: { bar: 999 } } };
+			const state = reactive(obj);
+
+			// [ReactiveEffect -> name, ReactiveEffect -> age]
+
+			// computed内部存在一个effect,  computed回调函数访问proxy对象属性，触发get，就会收集对应的effect，这个例子来说：
+			// name -> [ReactiveEffect], age -> [ReactiveEffect]
+			// 当改变proxy属性，触发依赖更新，调用内部scheduler回调，重置脏检查，触发effect回调，获取people.value的值，people.value 收集effect，
+			// 执行computed回调(这一步，name,age又会重新收集computed的内部effect)，得到到计算之后的值
+			const people = computed(() => {
+				return state.name + state.age;
+			});
+
+			// [ReactiveEffect - value]
+			effect(() => {
+				app.innerHTML = people.value;
+			});
+
+			setTimeout(() => {
+				state.name = 'lll';
+			}, 1000);
+		</script>
+	</body>
+</html>

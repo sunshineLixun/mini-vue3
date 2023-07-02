@@ -113,7 +113,6 @@ export function stop(runner: ReactiveEffectRunner) {
  * @param key
  */
 export function track(target: object, key: unknown) {
-	console.log('track', activeEffect);
 	if (activeEffect) {
 		// 说明当前取值操作发生在effect中
 		let depsMap = targetMap.get(target);
