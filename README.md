@@ -1,9 +1,18 @@
-# mini-vue3 
+# mini-vue3
 
-简版vue3 实现
+简版 vue3 实现
 
-todo:
+reactivity
 
 - [x] reactivity
-- [x] shared
-- [ ] ...
+- [x] computed 的实现
+- [x] track 依赖收集
+- [x] trigger 触发依赖
+- [x] isReactive
+- [x] 嵌套 reactive
+
+- [x] effect.scheduler
+- [x] effect.stop
+- [ ] toRaw
+- [ ] readonly
+- [ ] ref
