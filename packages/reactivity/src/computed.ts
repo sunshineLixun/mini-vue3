@@ -33,6 +33,17 @@ class ComputedRefImpl<T> {
 
 	constructor(public getter: ComputedGetter<T>, private readonly _setter: ComputedSetter<T>) {
 		// 这里的 ReactiveEffect第二个回调触发时机：当proxy对象属性触发了set
+		// getter里面的响应式对象属性 收集当前内部的effect
+
+		/**
+		 * @example
+		 * computed(() => {
+		 * 		return state.name + state.name2
+		 * })
+		 *
+		 * 这里的name 和 name2 都收集了 this.effect
+		 * 此时的 weakMap结构如下： { target: Map{name: Set<this.effect>, name2: Set<this.effect>} }
+		 */
 		this.effect = new ReactiveEffect(getter, () => {
 			// 这里说明有新的依赖值有变化，重置脏检查
 			if (!this._dirty) {

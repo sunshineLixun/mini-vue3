@@ -5,6 +5,9 @@ var isFunction = (val) => typeof val === "function";
 var NOOP = () => {
 };
 var isArray = Array.isArray;
+var objectToString = Object.prototype.toString;
+var toTypeString = (value) => objectToString.call(value);
+var isPlainObject = (val) => toTypeString(val) === "[object Object]";
 
 // packages/reactivity/src/dep.ts
 var createDep = (effects) => {
@@ -175,6 +178,9 @@ var ReactiveFlags = /* @__PURE__ */ ((ReactiveFlags2) => {
   return ReactiveFlags2;
 })(ReactiveFlags || {});
 var reactiveMap = /* @__PURE__ */ new WeakMap();
+var isReactive = (value) => {
+  return !!(value && value["__v_isReactive" /* IS_REACTIVE */]);
+};
 function reactive(target) {
   if (!isObject(target)) {
     return target;
@@ -255,6 +261,65 @@ function computed(getterOrOptions) {
   }
   return new ComputedRefImpl(getter, setter);
 }
+
+// packages/reactivity/src/watch.ts
+function watch(source, cb, options) {
+  doWatch(source, cb, options);
+}
+function doWatch(source, cb, { immediate, deep } = {}) {
+  let getter;
+  if (isReactive(source)) {
+    getter = () => traverse(source);
+    deep = true;
+  } else if (isFunction(source)) {
+    getter = source;
+  } else {
+    getter = NOOP;
+  }
+  let oldValue = void 0;
+  const job = () => {
+    if (!effect2.active) {
+      return;
+    }
+    if (cb) {
+      const newValue = effect2.run();
+      cb(newValue, oldValue);
+      oldValue = newValue;
+    } else {
+      effect2.run();
+    }
+  };
+  const effect2 = new ReactiveEffect(getter, job);
+  if (cb) {
+    if (immediate) {
+      job();
+    } else {
+      oldValue = effect2.run();
+    }
+  } else {
+    effect2.run();
+  }
+}
+function traverse(value, seen) {
+  if (!isObject(value)) {
+    return value;
+  }
+  seen = seen || /* @__PURE__ */ new Set();
+  if (seen.has(value)) {
+    return value;
+  }
+  seen.add(value);
+  if (isArray(value)) {
+    for (let index = 0; index < value.length; index++) {
+      traverse(value[index], seen);
+    }
+  } else if (isPlainObject(value)) {
+    for (const key in value) {
+      traverse(value[key], seen);
+    }
+  }
+  return value;
+}
 export {
   ReactiveEffect,
   ReactiveFlags,
@@ -262,12 +327,15 @@ export {
   cleanupEffect,
   computed,
   effect,
+  isReactive,
   reactive,
   reactiveMap,
   stop,
   track,
   trackEffects,
+  traverse,
   trigger,
-  triggerEffects
+  triggerEffects,
+  watch
 };
 //# sourceMappingURL=reactivity.esm.js.map

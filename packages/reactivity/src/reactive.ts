@@ -19,6 +19,10 @@ export interface Target {
 
 export const reactiveMap = new WeakMap<Target, any>();
 
+export const isReactive = (value: unknown) => {
+	return !!(value && (value as Target)[ReactiveFlags.IS_REACTIVE]);
+};
+
 export function reactive(target: object) {
 	if (!isObject(target)) {
 		return target;
