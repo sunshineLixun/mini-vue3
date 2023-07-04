@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>mini vue3</title>
+	</head>
+	<body>
+		<div id="app"></div>
+		<script type="module">
+			import { reactive, readonly, isReadonly } from './reactivity.esm.js';
+
+			const obj = { flag: true, name: 'xx', age: 10, foo: { a: 1, b: { bar: 999 } } };
+			const state = reactive(obj);
+
+			const readonlyState = readonly(state);
+
+			console.log(isReadonly(readonlyState));
+
+			setTimeout(() => {
+				readonlyState.name = 'readonly';
+
+				delete readonlyState.name;
+			}, 1000);
+		</script>
+	</body>
+</html>

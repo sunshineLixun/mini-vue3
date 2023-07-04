@@ -146,26 +146,52 @@ function cleanupEffect(effect2) {
 }
 
 // packages/reactivity/src/baseHandlers.ts
-var mutableHandlers = {
-  set(target, key, newValue, receiver) {
+var set = createSetter();
+function createSetter() {
+  return function set2(target, key, value, receiver) {
     const oldValue = target[key];
-    const result = Reflect.set(target, key, newValue, receiver);
-    if (hasChanged(newValue, oldValue)) {
-      trigger(target, key, newValue, oldValue);
+    const result = Reflect.set(target, key, value, receiver);
+    if (hasChanged(value, oldValue)) {
+      trigger(target, key, value, oldValue);
     }
     return result;
-  },
-  get(target, key, receiver) {
+  };
+}
+var get = createGetter(false);
+var readonlyGet = createGetter(true);
+function createGetter(isReadonly2 = false) {
+  return function get2(target, key, receiver) {
     if (key === "__v_isReactive" /* IS_REACTIVE */) {
-      return true;
+      return !isReadonly2;
+    } else if (key === "__v_isReadonly" /* IS_READONLY */) {
+      return isReadonly2;
     }
-    track(target, key);
+    if (!isReadonly2) {
+      track(target, key);
+    }
     const res = Reflect.get(target, key, receiver);
     if (isObject(res)) {
-      return reactive(res);
+      return isReadonly2 ? readonly(res) : reactive(res);
     }
     return res;
-  }
+  };
+}
+var mutableHandlers = {
+  set,
+  get
+};
+var readonlyHandlers = {
+  // 只读属性不能被set
+  set(target, key) {
+    console.warn(`Set operation on key "${String(key)}" failed: target is readonly.`, target);
+    return true;
+  },
+  // 只读属性不能被删除
+  deleteProperty(target, key) {
+    console.warn(`Delete operation on key "${String(key)}" failed: target is readonly.`, target);
+    return true;
+  },
+  get: readonlyGet
 };
 
 // packages/reactivity/src/reactive.ts
@@ -178,22 +204,38 @@ var ReactiveFlags = /* @__PURE__ */ ((ReactiveFlags2) => {
   return ReactiveFlags2;
 })(ReactiveFlags || {});
 var reactiveMap = /* @__PURE__ */ new WeakMap();
+var readonlyMap = /* @__PURE__ */ new WeakMap();
+var isReadonly = (value) => {
+  return !!(value && value["__v_isReadonly" /* IS_READONLY */]);
+};
 var isReactive = (value) => {
+  if (isReadonly(value)) {
+    return isReactive(value["__v_raw" /* RAW */]);
+  }
   return !!(value && value["__v_isReactive" /* IS_REACTIVE */]);
 };
+function readonly(target) {
+  return createReactiveObject(target, true, readonlyHandlers, readonlyMap);
+}
 function reactive(target) {
   if (!isObject(target)) {
     return target;
   }
-  const existingProxy = reactiveMap.get(target);
+  if (isReadonly(target)) {
+    return target;
+  }
+  return createReactiveObject(target, false, mutableHandlers, reactiveMap);
+}
+function createReactiveObject(target, isReadonly2, baseHandlers, proxyMap) {
+  const existingProxy = proxyMap.get(target);
   if (existingProxy) {
     return existingProxy;
   }
-  if (target["__v_isReactive" /* IS_REACTIVE */]) {
+  if (target["__v_isReactive" /* IS_REACTIVE */] && !isReadonly2) {
     return target;
   }
-  const proxy = new Proxy(target, mutableHandlers);
-  reactiveMap.set(target, proxy);
+  const proxy = new Proxy(target, baseHandlers);
+  proxyMap.set(target, proxy);
   return proxy;
 }
 
@@ -326,10 +368,14 @@ export {
   activeEffect,
   cleanupEffect,
   computed,
+  createReactiveObject,
   effect,
   isReactive,
+  isReadonly,
   reactive,
   reactiveMap,
+  readonly,
+  readonlyMap,
   stop,
   track,
   trackEffects,

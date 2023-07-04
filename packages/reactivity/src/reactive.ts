@@ -1,5 +1,5 @@
 import { isObject } from '@vue/shared';
-import { mutableHandlers } from './baseHandlers';
+import { mutableHandlers, readonlyHandlers } from './baseHandlers';
 
 export const enum ReactiveFlags {
 	SKIP = '__v_skip',
@@ -18,16 +18,48 @@ export interface Target {
 }
 
 export const reactiveMap = new WeakMap<Target, any>();
+export const readonlyMap = new WeakMap<Target, any>();
+
+export const isReadonly = (value: unknown) => {
+	// 属性访问 触发 readonlyHandlers.get 方法，其内部判断了key === ReactiveFlags.IS_READONLY
+	return !!(value && (value as Target)[ReactiveFlags.IS_READONLY]);
+};
 
 export const isReactive = (value: unknown) => {
+	if (isReadonly(value)) {
+		return isReactive((value as Target)[ReactiveFlags.RAW]);
+	}
 	return !!(value && (value as Target)[ReactiveFlags.IS_REACTIVE]);
 };
+
+export function readonly(target: object) {
+	return createReactiveObject(target, true, readonlyHandlers, readonlyMap);
+}
 
 export function reactive(target: object) {
 	if (!isObject(target)) {
 		return target;
 	}
 
+	/**
+	 * @example
+	 * const state = reactive({})
+	 * const readonlyS = readonly(state)
+	 * 如果是readonly返回的响应式对象，返回其本身
+	 */
+	if (isReadonly(target)) {
+		return target;
+	}
+
+	return createReactiveObject(target, false, mutableHandlers, reactiveMap);
+}
+
+export function createReactiveObject(
+	target: Target,
+	isReadonly: boolean,
+	baseHandlers: ProxyHandler<any>,
+	proxyMap: WeakMap<Target, any>
+) {
 	// 判断对象是否被代理过，如果是，返回代理对象
 	/** 场景：
 	 *  const obj = {a: 1}
@@ -35,7 +67,7 @@ export function reactive(target: object) {
 			const state2 = reactive(obj);
 			state === state2  true
 	 */
-	const existingProxy = reactiveMap.get(target);
+	const existingProxy = proxyMap.get(target);
 	if (existingProxy) {
 		return existingProxy;
 	}
@@ -47,13 +79,15 @@ export function reactive(target: object) {
 			const state2 = reactive(state);
 			state === state2  true
 	 */
-	if (target[ReactiveFlags.IS_REACTIVE]) {
+
+	// 排除 readonly(), readonly 包装的是proxy对象，不能返回已被代理对象，要返回新的代理对象，拦截set,delete,get方法
+	if (target[ReactiveFlags.IS_REACTIVE] && !isReadonly) {
 		return target;
 	}
 
-	const proxy = new Proxy(target, mutableHandlers);
+	const proxy = new Proxy(target, baseHandlers);
 
 	// 缓存代理对象
-	reactiveMap.set(target, proxy);
+	proxyMap.set(target, proxy);
 	return proxy;
 }
