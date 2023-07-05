@@ -32,6 +32,18 @@ export const isReactive = (value: unknown) => {
 	return !!(value && (value as Target)[ReactiveFlags.IS_REACTIVE]);
 };
 
+export function isProxy(value: unknown) {
+	return isReadonly(value) || isReactive(value);
+}
+
+// 第一次执行 observed是响应式对象，访问ReactiveFlags.RAW触发proxy set方法，
+// 触发proxy set方法返回readonlyMap 或者 reactiveMap保存的源对象，
+// 第二次执行，源对象中没有ReactiveFlags.RAW属性，直接返回源对象
+export function toRaw<T>(observed: T): T {
+	const raw = observed && (observed as Target)[ReactiveFlags.RAW];
+	return raw ? toRaw(raw) : observed;
+}
+
 export function readonly(target: object) {
 	return createReactiveObject(target, true, readonlyHandlers, readonlyMap);
 }

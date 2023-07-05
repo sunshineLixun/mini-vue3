@@ -2,7 +2,9 @@
 
 简版 vue3 实现
 
-reactivity
+启动项目：找到对应的目录下，[liveServer](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) 启动 dist 目录下的 html 文件
+
+## reactivity
 
 - [x] reactivity
 - [x] 嵌套 reactive
@@ -21,6 +23,7 @@ reactivity
 
 - [x] isReactive
 - [x] isReadonly
+- [x] isProxy
 
-- [ ] toRaw
+- [x] toRaw
 - [ ] ref

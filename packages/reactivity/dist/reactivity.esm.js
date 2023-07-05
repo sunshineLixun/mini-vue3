@@ -161,10 +161,13 @@ var get = createGetter(false);
 var readonlyGet = createGetter(true);
 function createGetter(isReadonly2 = false) {
   return function get2(target, key, receiver) {
+    const weakMap = isReadonly2 ? readonlyMap : reactiveMap;
     if (key === "__v_isReactive" /* IS_REACTIVE */) {
       return !isReadonly2;
     } else if (key === "__v_isReadonly" /* IS_READONLY */) {
       return isReadonly2;
+    } else if (key === "__v_raw" /* RAW */ && receiver === weakMap.get(target)) {
+      return target;
     }
     if (!isReadonly2) {
       track(target, key);
@@ -214,6 +217,13 @@ var isReactive = (value) => {
   }
   return !!(value && value["__v_isReactive" /* IS_REACTIVE */]);
 };
+function isProxy(value) {
+  return isReadonly(value) || isReactive(value);
+}
+function toRaw(observed) {
+  const raw = observed && observed["__v_raw" /* RAW */];
+  return raw ? toRaw(raw) : observed;
+}
 function readonly(target) {
   return createReactiveObject(target, true, readonlyHandlers, readonlyMap);
 }
@@ -373,6 +383,7 @@ export {
   computed,
   createReactiveObject,
   effect,
+  isProxy,
   isReactive,
   isReadonly,
   reactive,
@@ -380,6 +391,7 @@ export {
   readonly,
   readonlyMap,
   stop,
+  toRaw,
   track,
   trackEffects,
   traverse,
