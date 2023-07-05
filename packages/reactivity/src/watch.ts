@@ -20,6 +20,10 @@ type OnCleanup = (cleanupFn: () => void) => void;
 
 export type WatchCallback<V = any, OV = any> = (value: V, oldValue: OV, onCleanup?: OnCleanup) => any;
 
+export function watchEffect(effect: WatchEffect, options?: WatchOptions) {
+	doWatch(effect, null, options);
+}
+
 // watch 可以监听 ref、 computed、 reactive、getter
 // 当监听整个响应式对象reactive时，会自动启用深层模式， 递归响应式对象，触发每个属性收集effect，所以不建议直接监听整个响应式对象，会有隐形的性能影响
 // 推荐使用getter 方法 访问每个属性： watch(() => state.name, cb)
@@ -63,7 +67,7 @@ function doWatch(
 	// 初始化undefined，第一次触发watch回调，oldValue 是没有的
 	let oldValue = undefined;
 
-	// scheduler
+	// 自定义 scheduler，可以控制触发依赖更新时机
 	const job = () => {
 		if (!effect.active) {
 			return;
@@ -83,6 +87,9 @@ function doWatch(
 
 	// getter 方法里面响应式对象属性收集了这个effect，当响应式对象属性发生set，就会触发这里的job方法，
 	// job方法里面执行getter方法，拿到最新的值，然后将老值，新值抛出cb，用户就能拿到旧 新 值
+
+	// watch是 effect + 自定义scheduler, scheduler回调控制cb回传数值
+	// watchEffect 就是effect，当数据变化时，直接触发回调更新
 	const effect = new ReactiveEffect(getter, job);
 
 	if (cb) {
@@ -95,7 +102,7 @@ function doWatch(
 			oldValue = effect.run();
 		}
 	} else {
-		// watchEffect
+		// watchEffect 默认执行一次
 		effect.run();
 	}
 }

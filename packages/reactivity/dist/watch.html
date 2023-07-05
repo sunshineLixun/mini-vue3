@@ -9,17 +9,17 @@
 	<body>
 		<div id="app"></div>
 		<script type="module">
-			import { reactive, watch } from './reactivity.esm.js';
+			import { reactive, watch, watchEffect } from './reactivity.esm.js';
 
 			const obj = { flag: true, name: 'xx', age: 10, foo: { a: 1, b: { bar: 999 } } };
 			const state = reactive(obj);
 
-			watch(
-				() => state.name,
-				(newValue, oldValue) => {
-					console.log(newValue, oldValue);
-				}
-			);
+			// watch(
+			// 	() => state.name,
+			// 	(newValue, oldValue) => {
+			// 		console.log(newValue, oldValue);
+			// 	}
+			// );
 
 			setTimeout(() => {
 				state.name = 'lll';
@@ -28,6 +28,10 @@
 					state.name = 'model y';
 				}, 1000);
 			}, 1000);
+
+			watchEffect(() => {
+				console.log(state.name);
+			});
 		</script>
 	</body>
 </html>

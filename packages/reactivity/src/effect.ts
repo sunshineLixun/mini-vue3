@@ -51,7 +51,7 @@ export class ReactiveEffect<T = any> {
 	 * e1 -> e2 -> e1
 	 */
 	parent: ReactiveEffect | undefined = undefined;
-	// scheduler记录着：proxy对象set了新的值，会触发scheduler回调
+	// scheduler记录着：proxy对象set了新的值，会触发scheduler回调，控制依赖更新时机
 	// 这里也可以认为是 proxy对象的属性发生了变化
 
 	constructor(public fn: () => T, public scheduler: EffectScheduler | null = null) {}

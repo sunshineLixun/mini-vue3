@@ -19,7 +19,7 @@ var createDep = (effects) => {
 var activeEffect;
 var targetMap = /* @__PURE__ */ new WeakMap();
 var ReactiveEffect = class {
-  // scheduler记录着：proxy对象set了新的值，会触发scheduler回调
+  // scheduler记录着：proxy对象set了新的值，会触发scheduler回调，控制依赖更新时机
   // 这里也可以认为是 proxy对象的属性发生了变化
   constructor(fn, scheduler = null) {
     this.fn = fn;
@@ -305,6 +305,9 @@ function computed(getterOrOptions) {
 }
 
 // packages/reactivity/src/watch.ts
+function watchEffect(effect2, options) {
+  doWatch(effect2, null, options);
+}
 function watch(source, cb, options) {
   doWatch(source, cb, options);
 }
@@ -382,6 +385,7 @@ export {
   traverse,
   trigger,
   triggerEffects,
-  watch
+  watch,
+  watchEffect
 };
 //# sourceMappingURL=reactivity.esm.js.map

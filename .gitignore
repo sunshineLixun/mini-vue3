@@ -1,4 +1,5 @@
-# dist
+dist/*.esm.js
+dist/*.map
 .DS_Store
 node_modules
 coverage
