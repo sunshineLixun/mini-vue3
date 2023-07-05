@@ -14,6 +14,7 @@ reactivity
 
 - [x] computed 的实现
 - [x] watch 的实现
+- [x] watchEffect 的实现
 
 - [x] track 依赖收集
 - [x] trigger 触发依赖
