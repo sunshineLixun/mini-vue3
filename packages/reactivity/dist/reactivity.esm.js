@@ -326,19 +326,40 @@ function doWatch(source, cb, { immediate, deep } = {}) {
   if (isReactive(source)) {
     getter = () => traverse(source);
     deep = true;
+  } else if (isArray(source)) {
   } else if (isFunction(source)) {
-    getter = source;
+    if (cb) {
+      getter = source;
+    } else {
+      getter = () => {
+        if (cleanup) {
+          cleanup();
+        }
+        return source(onCleanup);
+      };
+    }
   } else {
     getter = NOOP;
   }
+  if (cb && deep) {
+    const baseGetter = getter;
+    getter = () => traverse(baseGetter());
+  }
   let oldValue = void 0;
+  let cleanup;
+  const onCleanup = (cleanupFn) => {
+    cleanup = cleanupFn;
+  };
   const job = () => {
     if (!effect2.active) {
       return;
     }
     if (cb) {
       const newValue = effect2.run();
-      cb(newValue, oldValue);
+      if (cleanup) {
+        cleanup();
+      }
+      cb(newValue, oldValue, onCleanup);
       oldValue = newValue;
     } else {
       effect2.run();

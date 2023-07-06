@@ -16,22 +16,24 @@
 
 			// watch(
 			// 	() => state.name,
-			// 	(newValue, oldValue) => {
-			// 		console.log(newValue, oldValue);
+			// 	async (newValue, oldValue, onCleanup) => {
+			// 		onCleanup(() => {
+			// 			console.log('清除');
+			// 		});
+
+			// 		console.log(newValue);
 			// 	}
 			// );
 
-			setTimeout(() => {
-				state.name = 'lll';
-
-				setTimeout(() => {
-					state.name = 'model y';
-				}, 1000);
-			}, 1000);
-
-			watchEffect(() => {
-				console.log(state.name);
+			watchEffect(onCleanup => {
+				console.log('watchEffect', state.name);
+				onCleanup(() => {
+					console.log('清除');
+				});
 			});
+
+			state.name = 'lll';
+			state.name = 'model y';
 		</script>
 	</body>
 </html>

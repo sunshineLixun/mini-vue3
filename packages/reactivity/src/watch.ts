@@ -16,6 +16,7 @@ export type WatchEffect = (onCleanup: OnCleanup) => void;
 // 响应式对象
 export type WatchSource<T = any> = ComputedRef<T> | (() => T);
 
+// cleanupFn 用户执行的回调
 type OnCleanup = (cleanupFn: () => void) => void;
 
 export type WatchCallback<V = any, OV = any> = (value: V, oldValue: OV, onCleanup?: OnCleanup) => any;
@@ -35,7 +36,7 @@ export function watch<T = any, Immediate extends Readonly<boolean> = false>(
 	doWatch(source as any, cb, options);
 }
 
-// TODO: 1：停止侦听器  2：副作用清理 3：监听数组结构
+// TODO: 1：停止侦听器  3：监听数组结构
 function doWatch(
 	source: WatchSource | WatchSource[] | WatchEffect | object,
 	cb: WatchCallback | null,
@@ -52,20 +53,55 @@ function doWatch(
 		getter = () => traverse(source);
 		// 当直接侦听一个响应式对象时，侦听器会自动启用深层模式
 		deep = true;
+	} else if (isArray(source)) {
+		// TODO:
 	} else if (isFunction(source)) {
-		/**
-		 * @example
-		 * const state = reactive({name : 1})
-		 * watch(() => state.name, val => {})
-		 */
-		// 直接取值
-		getter = source as any;
+		// watch cb
+		if (cb) {
+			/**
+			 * @example
+			 * const state = reactive({name : 1})
+			 * watch(() => state.name, val => {})
+			 */
+			// 直接赋值
+			getter = source as any;
+		} else {
+			/**
+			 * @example
+			 * watchEffect(onCleanup => {
+						onCleanup(() => {});
+						console.log('watchEffect', state.name);
+					});
+			 */
+
+			// 执行watchEffect的传入的函数，有2个功能：
+			// 1：属性收集effect，下次proxy属性变化时，触发依赖更新，执行自定义的scheduler
+			// 2：拿到用户onCleanup的回调，在下次执行时，调用 用户的onCleanup回调
+			getter = () => {
+				if (cleanup) {
+					cleanup();
+				}
+				return source(onCleanup);
+			};
+		}
 	} else {
 		getter = NOOP;
 	}
 
+	if (cb && deep) {
+		const baseGetter = getter;
+		getter = () => traverse(baseGetter());
+	}
+
 	// 初始化undefined，第一次触发watch回调，oldValue 是没有的
 	let oldValue = undefined;
+
+	// 暂存用户传入进去的OnCleanup回调函数
+	// 在下一次执行watch的回调时，执行一遍cleanup
+	let cleanup: () => void;
+	const onCleanup: OnCleanup = (cleanupFn: () => void) => {
+		cleanup = cleanupFn;
+	};
 
 	// 自定义 scheduler，可以控制触发依赖更新时机
 	const job = () => {
@@ -75,8 +111,13 @@ function doWatch(
 		if (cb) {
 			// 执行getter方法，拿到最新的返回值
 			const newValue = effect.run();
+
+			if (cleanup) {
+				cleanup();
+			}
+
 			// 传给watch回调
-			cb(newValue, oldValue);
+			cb(newValue, oldValue, onCleanup);
 			// 更新老值
 			oldValue = newValue;
 		} else {
