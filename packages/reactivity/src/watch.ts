@@ -39,7 +39,6 @@ export function watch<T = any, Immediate extends Readonly<boolean> = false>(
 	return doWatch(source as any, cb, options);
 }
 
-// TODO: 1：停止侦听器  3：监听数组结构
 function doWatch(
 	source: WatchSource | WatchSource[] | WatchEffect | object,
 	cb: WatchCallback | null,
@@ -60,7 +59,20 @@ function doWatch(
 		getter = () => source;
 		deep = true;
 	} else if (isArray(source)) {
-		// TODO:
+		getter = () =>
+			source.map((s: any) => {
+				if (isRef(s)) {
+					return s.value;
+				} else if (isReactive(s)) {
+					return traverse(s);
+				} else if (isFunction(s)) {
+					let res: any;
+					try {
+						res = s();
+					} catch {}
+					return res;
+				}
+			});
 	} else if (isFunction(source)) {
 		// watch cb
 		if (cb) {
@@ -152,7 +164,6 @@ function doWatch(
 			// 如果用户没有写immediate，主动触发，
 			// 这里程序要主动触发getter拿到老值，同时因为有属性访问，触发当前监听响应式对象属性依赖收集effect，当属性变化时，触发依赖effect更新, 拿到新值
 			oldValue = effect.run();
-			console.log(oldValue);
 		}
 	} else {
 		// watchEffect 默认执行一次

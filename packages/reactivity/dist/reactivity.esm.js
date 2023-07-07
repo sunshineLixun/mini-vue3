@@ -392,6 +392,20 @@ function doWatch(source, cb, { immediate, deep } = {}) {
     getter = () => source;
     deep = true;
   } else if (isArray(source)) {
+    getter = () => source.map((s) => {
+      if (isRef(s)) {
+        return s.value;
+      } else if (isReactive(s)) {
+        return traverse(s);
+      } else if (isFunction(s)) {
+        let res;
+        try {
+          res = s();
+        } catch (e) {
+        }
+        return res;
+      }
+    });
   } else if (isFunction(source)) {
     if (cb) {
       getter = source;
@@ -437,7 +451,6 @@ function doWatch(source, cb, { immediate, deep } = {}) {
       job();
     } else {
       oldValue = effect2.run();
-      console.log(oldValue);
     }
   } else {
     effect2.run();

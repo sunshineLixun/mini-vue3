@@ -51,22 +51,15 @@
 
 			// 4:
 			const name = ref('name');
-			const state = reactive({ name: 'js' });
 
-			// const stop = watch(name, newVal => {
-			// 	console.log(newVal);
-			// });
+			const stop = watch(name, newVal => {
+				console.log(newVal);
+			});
 
 			// stop();
 
-			watch(state, (newVal, oldVal) => {
-				console.log(newVal, oldVal);
-			});
-
 			setTimeout(() => {
-				// name.value = 'xxx';
-
-				state.name = 'ts';
+				name.value = 'xxx';
 			}, 1000);
 		</script>
 	</body>

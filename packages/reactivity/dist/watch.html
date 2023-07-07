@@ -25,15 +25,24 @@
 			// 	}
 			// );
 
-			watchEffect(onCleanup => {
-				console.log('watchEffect', state.name);
-				onCleanup(() => {
-					console.log('清除');
-				});
+			// watchEffect(onCleanup => {
+			// 	console.log('watchEffect', state.name);
+			// 	onCleanup(() => {
+			// 		console.log('清除');
+			// 	});
+			// });
+
+			// state.name = 'lll';
+			// state.name = 'model y';
+
+			watch([() => state.name, () => state.age], ([name, age], [prevName, prevAge]) => {
+				console.log('新:', [name, age]);
 			});
 
-			state.name = 'lll';
-			state.name = 'model y';
+			setTimeout(() => {
+				state.name = 'jjj';
+				state.age = 1000;
+			}, 1000);
 		</script>
 	</body>
 </html>
