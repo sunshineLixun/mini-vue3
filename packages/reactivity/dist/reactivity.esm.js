@@ -122,17 +122,19 @@ function trigger(target, key, newValue, oldValue) {
   triggerEffects(createDep(effects));
 }
 function triggerEffects(dep) {
-  const effects = isArray(dep) ? dep : [...dep];
-  if (effects) {
-    effects.forEach((effect2) => {
-      if (activeEffect !== effect2) {
-        if (effect2.scheduler) {
-          effect2.scheduler();
-        } else {
-          effect2.run();
+  if (dep) {
+    const effects = isArray(dep) ? dep : [...dep];
+    if (effects) {
+      effects.forEach((effect2) => {
+        if (activeEffect !== effect2) {
+          if (effect2.scheduler) {
+            effect2.scheduler();
+          } else {
+            effect2.run();
+          }
         }
-      }
-    });
+      });
+    }
   }
 }
 function cleanupEffect(effect2) {
@@ -142,6 +144,59 @@ function cleanupEffect(effect2) {
       deps[index].delete(effect2);
     }
     deps.length = 0;
+  }
+}
+
+// packages/reactivity/src/ref.ts
+function isRef(ref2) {
+  return !!(ref2 && ref2.__v_isRef === true);
+}
+function ref(value) {
+  return createRef(value, false);
+}
+function shallowRef(value) {
+  return createRef(value, true);
+}
+function createRef(value, shallow) {
+  if (isRef(value)) {
+    return value;
+  }
+  return new RefImpl(value, shallow);
+}
+var RefImpl = class {
+  constructor(value, __v_isShallow) {
+    this.__v_isShallow = __v_isShallow;
+    this.dep = void 0;
+    // 内部缓存的值,用作get方法放回的值
+    this._value = void 0;
+    // 内部缓存的原始值，用作新 老值变化的比较
+    this._rawValue = void 0;
+    this.__v_isRef = true;
+    this._rawValue = __v_isShallow ? value : toRaw(value);
+    this._value = __v_isShallow ? value : toReactive(value);
+  }
+  get value() {
+    trackRefValue(this);
+    return this._value;
+  }
+  set value(newValue) {
+    newValue = this.__v_isShallow ? newValue : toRaw(newValue);
+    if (hasChanged(newValue, this._rawValue)) {
+      this._rawValue = newValue;
+      this._value = this.__v_isShallow ? newValue : toReactive(newValue);
+      triggerRefValue(this);
+    }
+  }
+};
+function trackRefValue(ref2) {
+  if (activeEffect) {
+    trackEffects(ref2.dep || (ref2.dep = createDep()));
+  }
+}
+function triggerRefValue(ref2) {
+  const dep = ref2.dep;
+  if (dep) {
+    triggerEffects(dep);
   }
 }
 
@@ -161,18 +216,20 @@ var get = createGetter(false);
 var readonlyGet = createGetter(true);
 function createGetter(isReadonly2 = false) {
   return function get2(target, key, receiver) {
-    const weakMap = isReadonly2 ? readonlyMap : reactiveMap;
     if (key === "__v_isReactive" /* IS_REACTIVE */) {
       return !isReadonly2;
     } else if (key === "__v_isReadonly" /* IS_READONLY */) {
       return isReadonly2;
-    } else if (key === "__v_raw" /* RAW */ && receiver === weakMap.get(target)) {
+    } else if (key === "__v_raw" /* RAW */ && receiver === (isReadonly2 ? readonlyMap : reactiveMap.get(target))) {
       return target;
     }
     if (!isReadonly2) {
       track(target, key);
     }
     const res = Reflect.get(target, key, receiver);
+    if (isRef(res)) {
+      return res.value;
+    }
     if (isObject(res)) {
       return isReadonly2 ? readonly(res) : reactive(res);
     }
@@ -224,19 +281,22 @@ function toRaw(observed) {
   const raw = observed && observed["__v_raw" /* RAW */];
   return raw ? toRaw(raw) : observed;
 }
+function toReactive(value) {
+  return isObject(value) ? reactive(value) : value;
+}
 function readonly(target) {
   return createReactiveObject(target, true, readonlyHandlers, readonlyMap);
 }
 function reactive(target) {
-  if (!isObject(target)) {
-    return target;
-  }
   if (isReadonly(target)) {
     return target;
   }
   return createReactiveObject(target, false, mutableHandlers, reactiveMap);
 }
 function createReactiveObject(target, isReadonly2, baseHandlers, proxyMap) {
+  if (!isObject(target)) {
+    return target;
+  }
   const existingProxy = proxyMap.get(target);
   if (existingProxy) {
     return existingProxy;
@@ -407,17 +467,23 @@ export {
   isProxy,
   isReactive,
   isReadonly,
+  isRef,
   reactive,
   reactiveMap,
   readonly,
   readonlyMap,
+  ref,
+  shallowRef,
   stop,
   toRaw,
+  toReactive,
   track,
   trackEffects,
+  trackRefValue,
   traverse,
   trigger,
   triggerEffects,
+  triggerRefValue,
   watch,
   watchEffect
 };

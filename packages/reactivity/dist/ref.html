@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>mini vue3</title>
+	</head>
+	<body>
+		<div id="app"></div>
+		<script type="module">
+			import { ref, watchEffect, reactive } from './reactivity.esm.js';
+			// 1:
+			// const obj = { flag: true, name: 'xx', age: 10, foo: { a: 1, b: { bar: 999 } } };
+			// const state = reactive(obj);
+
+			// const refValue = ref(state);
+
+			// watchEffect(() => {
+			// 	console.log(refValue.value.name);
+			// });
+
+			// setTimeout(() => {
+			// 	refValue.value.name = 'lll';
+			// }, 1000);
+
+			// 2:
+			// const refVa = ref(1);
+
+			// watchEffect(() => {
+			// 	console.log(refVa.value);
+			// });
+
+			// setTimeout(() => {
+			// 	refVa.value = 2;
+			// }, 1000);
+
+			// 3:
+			// const ref1 = ref(1);
+			// const ref2 = ref(ref1);
+
+			// console.log(ref1 === ref2); // true
+
+			// watchEffect(() => {
+			// 	console.log(ref2.value);
+			// });
+
+			// setInterval(() => {
+			// 	ref2.value = 2;
+			// }, 1000);
+
+			// 4:
+			const name = ref('name');
+			const state = reactive({ name });
+			console.log(state.name === name.value);
+		</script>
+	</body>
+</html>

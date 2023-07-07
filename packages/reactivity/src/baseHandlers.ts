@@ -1,6 +1,7 @@
 import { hasChanged, isObject } from '@vue/shared';
 import { track, trigger } from './effect';
 import { ReactiveFlags, reactive, readonly, readonlyMap, reactiveMap } from './reactive';
+import { isRef } from './ref';
 
 const set = createSetter();
 function createSetter() {
@@ -24,13 +25,12 @@ const readonlyGet = createGetter(true);
 
 function createGetter(isReadonly = false) {
 	return function get(target: object, key: string | symbol, receiver: object) {
-		const weakMap = isReadonly ? readonlyMap : reactiveMap;
 		if (key === ReactiveFlags.IS_REACTIVE) {
 			// 这里表明target是代理对象
 			return !isReadonly;
 		} else if (key === ReactiveFlags.IS_READONLY) {
 			return isReadonly;
-		} else if (key === ReactiveFlags.RAW && receiver === weakMap.get(target)) {
+		} else if (key === ReactiveFlags.RAW && receiver === (isReadonly ? readonlyMap : reactiveMap.get(target))) {
 			return target;
 		}
 
@@ -41,6 +41,11 @@ function createGetter(isReadonly = false) {
 		}
 
 		const res = Reflect.get(target, key, receiver);
+
+		if (isRef(res)) {
+			// 如果value是Ref类型， 解包 Ref
+			return res.value;
+		}
 
 		// 处理深层次响应式对象，如果返回值是对象，需要再对 对象 做一次代理
 		if (isObject(res)) {

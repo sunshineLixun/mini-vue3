@@ -44,15 +44,16 @@ export function toRaw<T>(observed: T): T {
 	return raw ? toRaw(raw) : observed;
 }
 
+// 转成响应式对象
+export function toReactive<T extends unknown>(value: T): T {
+	return isObject(value) ? reactive(value as any) : value;
+}
+
 export function readonly(target: object) {
 	return createReactiveObject(target, true, readonlyHandlers, readonlyMap);
 }
 
-export function reactive(target: object) {
-	if (!isObject(target)) {
-		return target;
-	}
-
+export function reactive<T extends object>(target: T) {
 	/**
 	 * @example
 	 * const state = reactive({})
@@ -72,6 +73,9 @@ export function createReactiveObject(
 	baseHandlers: ProxyHandler<any>,
 	proxyMap: WeakMap<Target, any>
 ) {
+	if (!isObject(target)) {
+		return target;
+	}
 	// 判断对象是否被代理过，如果是，返回代理对象
 	/** 场景：
 	 *  const obj = {a: 1}

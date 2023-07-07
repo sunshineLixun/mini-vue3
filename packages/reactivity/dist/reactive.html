@@ -9,15 +9,19 @@
 	<body>
 		<div id="app"></div>
 		<script type="module">
-			import { reactive, toRaw, readonly } from './reactivity.esm.js';
+			import { reactive, toRaw, watchEffect } from './reactivity.esm.js';
 
-			const obj = { flag: true, name: 'xx', age: 10, foo: { a: 1, b: { bar: 999 } } };
+			const obj = { flag: true, name: 'xx', age: 10, foo: { a: 1, b: { bar: 999 } }, bar: [1, 2, 3] };
 			const state = reactive(obj);
 
-			const readonlyState = readonly(state);
+			watchEffect(() => {
+				console.log(state.bar);
+			});
 
-			console.log('toRaw', toRaw(state)); // obj
-			console.log(toRaw(state) === toRaw(readonlyState)); // true
+			setTimeout(() => {
+				// TODO: 数组的方法的处理
+				state.bar.push(111);
+			}, 1000);
 		</script>
 	</body>
 </html>

@@ -169,27 +169,29 @@ export function trigger(target: object, key: unknown, newValue: unknown, oldValu
 }
 
 export function triggerEffects(dep: Dep | ReactiveEffect[]) {
-	const effects = isArray(dep) ? dep : [...dep];
-	if (effects) {
-		effects.forEach(effect => {
-			/**
-			 * effect(() => {
-			 * 		state.name = 123123
-			 * })
-			 *
-			 * 为了防止在依赖中更新响应式数据，造成死循环，这里要做判断，
-			 * 如果当前正在执行的effect === 全局中activeEffect，表明此effect正在执行
-			 *
-			 */
-			if (activeEffect !== effect) {
-				if (effect.scheduler) {
-					effect.scheduler();
-				} else {
-					// 更新依赖
-					effect.run();
+	if (dep) {
+		const effects = isArray(dep) ? dep : [...dep];
+		if (effects) {
+			effects.forEach(effect => {
+				/**
+				 * effect(() => {
+				 * 		state.name = 123123
+				 * })
+				 *
+				 * 为了防止在依赖中更新响应式数据，造成死循环，这里要做判断，
+				 * 如果当前正在执行的effect === 全局中activeEffect，表明此effect正在执行
+				 *
+				 */
+				if (activeEffect !== effect) {
+					if (effect.scheduler) {
+						effect.scheduler();
+					} else {
+						// 更新依赖
+						effect.run();
+					}
 				}
-			}
-		});
+			});
+		}
 	}
 }
 
