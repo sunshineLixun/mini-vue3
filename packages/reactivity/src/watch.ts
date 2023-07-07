@@ -1,7 +1,10 @@
-import { NOOP, isArray, isFunction, isObject, isPlainObject } from '@vue/shared';
+import { NOOP, isArray, isFunction, isMap, isObject, isPlainObject, isSet } from '@vue/shared';
 import { ComputedRef } from './computed';
 import { ReactiveEffect } from './effect';
 import { isReactive } from './reactive';
+import { Ref, isRef } from './ref';
+
+const INITIAL_WATCHER_VALUE = {};
 
 export interface WatchOptions<Immediate = boolean> {
 	immediate?: Immediate;
@@ -14,7 +17,7 @@ export type WatchEffect = (onCleanup: OnCleanup) => void;
 // ComputedRef: 计算属性
 // Ref<T> ref
 // 响应式对象
-export type WatchSource<T = any> = ComputedRef<T> | (() => T);
+export type WatchSource<T = any> = Ref<T> | ComputedRef<T> | (() => T);
 
 // cleanupFn 用户执行的回调
 type OnCleanup = (cleanupFn: () => void) => void;
@@ -33,7 +36,7 @@ export function watch<T = any, Immediate extends Readonly<boolean> = false>(
 	cb: WatchCallback,
 	options?: WatchOptions<Immediate>
 ) {
-	doWatch(source as any, cb, options);
+	return doWatch(source as any, cb, options);
 }
 
 // TODO: 1：停止侦听器  3：监听数组结构
@@ -43,15 +46,18 @@ function doWatch(
 	{ immediate, deep }: WatchOptions = {}
 ) {
 	let getter: () => any;
-	if (isReactive(source)) {
+
+	if (isRef(source)) {
+		// 如果是ref，触发属性value收集依赖
+		getter = () => (source as Ref<any>).value;
+	} else if (isReactive(source)) {
 		/**
 		 * @example
 		 * const state = reactive({name : 1})
 		 * watch(state, val => {})
 		 */
 		// 递归遍历对象，依次取值，属性就会收集内部的effect
-		getter = () => traverse(source);
-		// 当直接侦听一个响应式对象时，侦听器会自动启用深层模式
+		getter = () => source;
 		deep = true;
 	} else if (isArray(source)) {
 		// TODO:
@@ -88,19 +94,22 @@ function doWatch(
 		getter = NOOP;
 	}
 
+	// 当直接侦听一个响应式对象时，侦听器会自动启用深层模式，对响应式对象每个属性
 	if (cb && deep) {
-		const baseGetter = getter;
-		getter = () => traverse(baseGetter());
+		getter = () => traverse(source);
 	}
 
 	// 初始化undefined，第一次触发watch回调，oldValue 是没有的
-	let oldValue = undefined;
+	let oldValue = INITIAL_WATCHER_VALUE;
 
 	// 暂存用户传入进去的OnCleanup回调函数
 	// 在下一次执行watch的回调时，执行一遍cleanup
 	let cleanup: () => void;
-	const onCleanup: OnCleanup = (cleanupFn: () => void) => {
-		cleanup = cleanupFn;
+	const onCleanup: OnCleanup = (fn: () => void) => {
+		// 执行cleanup操作也要执行stop
+		cleanup = effect.stop = () => {
+			fn();
+		};
 	};
 
 	// 自定义 scheduler，可以控制触发依赖更新时机
@@ -131,6 +140,8 @@ function doWatch(
 
 	// watch是 effect + 自定义scheduler, scheduler回调控制cb回传数值
 	// watchEffect 就是effect，当数据变化时，直接触发回调更新
+
+	// TODO: queueJob
 	const effect = new ReactiveEffect(getter, job);
 
 	if (cb) {
@@ -141,14 +152,20 @@ function doWatch(
 			// 如果用户没有写immediate，主动触发，
 			// 这里程序要主动触发getter拿到老值，同时因为有属性访问，触发当前监听响应式对象属性依赖收集effect，当属性变化时，触发依赖effect更新, 拿到新值
 			oldValue = effect.run();
+			console.log(oldValue);
 		}
 	} else {
 		// watchEffect 默认执行一次
 		effect.run();
 	}
+
+	// 停止侦听器
+	return () => effect.stop();
 }
 
 export function traverse(value: unknown, seen?: Set<unknown>) {
+	// reactive对象里面可以有如下值：array, set、map、普通对象，所以要分别处理
+
 	if (!isObject(value)) {
 		return value;
 	}
@@ -157,7 +174,13 @@ export function traverse(value: unknown, seen?: Set<unknown>) {
 		return value;
 	}
 	seen.add(value);
-	if (isArray(value)) {
+	if (isRef(value)) {
+		traverse(value.value, seen);
+	} else if (isMap(value) || isSet(value)) {
+		value.forEach((val: any) => {
+			traverse(val, seen);
+		});
+	} else if (isArray(value)) {
 		for (let index = 0; index < value.length; index++) {
 			traverse(value[index], seen);
 		}

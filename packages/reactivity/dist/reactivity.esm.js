@@ -5,6 +5,8 @@ var isFunction = (val) => typeof val === "function";
 var NOOP = () => {
 };
 var isArray = Array.isArray;
+var isMap = (val) => toTypeString(val) === "[object Map]";
+var isSet = (val) => toTypeString(val) === "[object Set]";
 var objectToString = Object.prototype.toString;
 var toTypeString = (value) => objectToString.call(value);
 var isPlainObject = (val) => toTypeString(val) === "[object Object]";
@@ -375,16 +377,19 @@ function computed(getterOrOptions) {
 }
 
 // packages/reactivity/src/watch.ts
+var INITIAL_WATCHER_VALUE = {};
 function watchEffect(effect2, options) {
   doWatch(effect2, null, options);
 }
 function watch(source, cb, options) {
-  doWatch(source, cb, options);
+  return doWatch(source, cb, options);
 }
 function doWatch(source, cb, { immediate, deep } = {}) {
   let getter;
-  if (isReactive(source)) {
-    getter = () => traverse(source);
+  if (isRef(source)) {
+    getter = () => source.value;
+  } else if (isReactive(source)) {
+    getter = () => source;
     deep = true;
   } else if (isArray(source)) {
   } else if (isFunction(source)) {
@@ -402,13 +407,14 @@ function doWatch(source, cb, { immediate, deep } = {}) {
     getter = NOOP;
   }
   if (cb && deep) {
-    const baseGetter = getter;
-    getter = () => traverse(baseGetter());
+    getter = () => traverse(source);
   }
-  let oldValue = void 0;
+  let oldValue = INITIAL_WATCHER_VALUE;
   let cleanup;
-  const onCleanup = (cleanupFn) => {
-    cleanup = cleanupFn;
+  const onCleanup = (fn) => {
+    cleanup = effect2.stop = () => {
+      fn();
+    };
   };
   const job = () => {
     if (!effect2.active) {
@@ -431,10 +437,12 @@ function doWatch(source, cb, { immediate, deep } = {}) {
       job();
     } else {
       oldValue = effect2.run();
+      console.log(oldValue);
     }
   } else {
     effect2.run();
   }
+  return () => effect2.stop();
 }
 function traverse(value, seen) {
   if (!isObject(value)) {
@@ -445,7 +453,13 @@ function traverse(value, seen) {
     return value;
   }
   seen.add(value);
-  if (isArray(value)) {
+  if (isRef(value)) {
+    traverse(value.value, seen);
+  } else if (isMap(value) || isSet(value)) {
+    value.forEach((val) => {
+      traverse(val, seen);
+    });
+  } else if (isArray(value)) {
     for (let index = 0; index < value.length; index++) {
       traverse(value[index], seen);
     }
