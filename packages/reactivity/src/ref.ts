@@ -1,4 +1,4 @@
-import { hasChanged } from '@vue/shared';
+import { hasChanged, isObject } from '@vue/shared';
 import { Dep, createDep } from './dep';
 import { activeEffect, trackEffects, triggerEffects } from './effect';
 import { toRaw, toReactive } from './reactive';
@@ -106,5 +106,35 @@ export function triggerRefValue(ref: Ref<any>) {
 	const dep = ref.dep;
 	if (dep) {
 		triggerEffects(dep);
+	}
+}
+
+export function toRef(source: Record<string, any> | MaybeRef, key?: string) {
+	if (isRef(source)) {
+		return source;
+	} else if (isObject(source)) {
+		return propertyToRef(source, key);
+	} else {
+		// 包装成 ref
+		return ref(source);
+	}
+}
+
+function propertyToRef(source: Record<string, any> | MaybeRef, key?: string) {
+	const value = source[key];
+	return isRef(value) ? value : new ObjectRefImpl(source, key);
+}
+
+class ObjectRefImpl<T extends object, K extends keyof T> {
+	public readonly __v_isRef = true;
+	constructor(private readonly _object: T, private readonly _key: K) {}
+
+	// ref.value
+	get value() {
+		return this._object[this._key];
+	}
+
+	set value(newValue) {
+		this._object[this._key] = newValue;
 	}
 }

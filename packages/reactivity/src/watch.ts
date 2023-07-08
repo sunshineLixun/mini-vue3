@@ -48,7 +48,7 @@ function doWatch(
 
 	if (isRef(source)) {
 		// 如果是ref，触发属性value收集依赖
-		getter = () => (source as Ref<any>).value;
+		getter = () => source.value;
 	} else if (isReactive(source)) {
 		/**
 		 * @example

@@ -9,11 +9,12 @@
 	<body>
 		<div id="app"></div>
 		<script type="module">
-			import { ref, watchEffect, reactive, watch } from './reactivity.esm.js';
-			// 1:
-			// const obj = { flag: true, name: 'xx', age: 10, foo: { a: 1, b: { bar: 999 } } };
-			// const state = reactive(obj);
+			import { ref, watchEffect, reactive, watch, toRef } from './reactivity.esm.js';
 
+			const obj = { flag: true, name: 'xx', age: 10, foo: { a: 1, b: { bar: 999 } } };
+			const state = reactive(obj);
+
+			// 1:
 			// const refValue = ref(state);
 
 			// watchEffect(() => {
@@ -50,16 +51,28 @@
 			// }, 1000);
 
 			// 4:
-			const name = ref('name');
+			// const name = ref('name');
 
-			const stop = watch(name, newVal => {
-				console.log(newVal);
+			// const stop = watch(name, newVal => {
+			// 	console.log(newVal);
+			// });
+
+			// // stop();
+
+			// setTimeout(() => {
+			// 	name.value = 'xxx';
+			// }, 1000);
+
+			// 5:
+			const name = toRef(state, 'name');
+			console.log(name);
+
+			watchEffect(() => {
+				console.log(name.value);
 			});
 
-			// stop();
-
 			setTimeout(() => {
-				name.value = 'xxx';
+				name.value = 'jjj';
 			}, 1000);
 		</script>
 	</body>

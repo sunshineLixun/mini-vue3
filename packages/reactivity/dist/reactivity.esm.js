@@ -204,6 +204,33 @@ function triggerRefValue(ref2) {
     triggerEffects(dep);
   }
 }
+function toRef(source, key) {
+  if (isRef(source)) {
+    return source;
+  } else if (isObject(source)) {
+    return propertyToRef(source, key);
+  } else {
+    return ref(source);
+  }
+}
+function propertyToRef(source, key) {
+  const value = source[key];
+  return isRef(value) ? value : new ObjectRefImpl(source, key);
+}
+var ObjectRefImpl = class {
+  constructor(_object, _key) {
+    this._object = _object;
+    this._key = _key;
+    this.__v_isRef = true;
+  }
+  // ref.value
+  get value() {
+    return this._object[this._key];
+  }
+  set value(newValue) {
+    this._object[this._key] = newValue;
+  }
+};
 
 // packages/reactivity/src/baseHandlers.ts
 var set = createSetter();
@@ -507,6 +534,7 @@ export {
   stop,
   toRaw,
   toReactive,
+  toRef,
   track,
   trackEffects,
   trackRefValue,
