@@ -3,12 +3,19 @@ import { Dep, createDep } from './dep';
 import { activeEffect, trackEffects, triggerEffects } from './effect';
 import { toRaw, toReactive } from './reactive';
 
-export interface Ref<T> {
+export interface Ref<T = any> {
 	dep: Dep;
 	value: T;
 }
 
-export function isRef(ref: any) {
+export type MaybeRef<T = any> = T | Ref<T>;
+
+export function unref<T>(ref: MaybeRef<T>): T {
+	return isRef(ref) ? ref.value : ref;
+}
+
+export function isRef<T>(ref: Ref<T> | unknown): ref is Ref<T>;
+export function isRef(ref: any): ref is Ref {
 	return !!(ref && ref.__v_isRef === true);
 }
 

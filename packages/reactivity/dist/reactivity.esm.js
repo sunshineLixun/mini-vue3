@@ -150,6 +150,9 @@ function cleanupEffect(effect2) {
 }
 
 // packages/reactivity/src/ref.ts
+function unref(ref2) {
+  return isRef(ref2) ? ref2.value : ref2;
+}
 function isRef(ref2) {
   return !!(ref2 && ref2.__v_isRef === true);
 }
@@ -511,6 +514,7 @@ export {
   trigger,
   triggerEffects,
   triggerRefValue,
+  unref,
   watch,
   watchEffect
 };
