@@ -213,6 +213,13 @@ function toRef(source, key) {
     return ref(source);
   }
 }
+function toRefs(object) {
+  const res = isArray(object) ? new Array(object.length) : {};
+  for (const key in object) {
+    res[key] = propertyToRef(object, key);
+  }
+  return res;
+}
 function propertyToRef(source, key) {
   const value = source[key];
   return isRef(value) ? value : new ObjectRefImpl(source, key);
@@ -535,6 +542,7 @@ export {
   toRaw,
   toReactive,
   toRef,
+  toRefs,
   track,
   trackEffects,
   trackRefValue,

@@ -1,4 +1,4 @@
-import { hasChanged, isObject } from '@vue/shared';
+import { hasChanged, isArray, isObject } from '@vue/shared';
 import { Dep, createDep } from './dep';
 import { activeEffect, trackEffects, triggerEffects } from './effect';
 import { toRaw, toReactive } from './reactive';
@@ -120,6 +120,14 @@ export function toRef(source: Record<string, any> | MaybeRef, key?: string) {
 	}
 }
 
+export function toRefs<T extends object>(object: T) {
+	const res: any = isArray(object) ? new Array(object.length) : {};
+	for (const key in object) {
+		res[key] = propertyToRef(object, key);
+	}
+	return res;
+}
+
 function propertyToRef(source: Record<string, any> | MaybeRef, key?: string) {
 	const value = source[key];
 	return isRef(value) ? value : new ObjectRefImpl(source, key);
@@ -131,10 +139,12 @@ class ObjectRefImpl<T extends object, K extends keyof T> {
 
 	// ref.value
 	get value() {
+		// _object是响应式对象，这里取值会触发依赖收集
 		return this._object[this._key];
 	}
 
 	set value(newValue) {
+		// 触发依赖更新
 		this._object[this._key] = newValue;
 	}
 }
