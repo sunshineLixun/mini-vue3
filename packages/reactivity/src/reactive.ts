@@ -25,14 +25,14 @@ export const isReadonly = (value: unknown) => {
 	return !!(value && (value as Target)[ReactiveFlags.IS_READONLY]);
 };
 
-export const isReactive = (value: unknown) => {
+export const isReactive = (value: unknown): boolean => {
 	if (isReadonly(value)) {
 		return isReactive((value as Target)[ReactiveFlags.RAW]);
 	}
 	return !!(value && (value as Target)[ReactiveFlags.IS_REACTIVE]);
 };
 
-export function isProxy(value: unknown) {
+export function isProxy(value: unknown): boolean {
 	return isReadonly(value) || isReactive(value);
 }
 
