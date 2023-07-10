@@ -9,7 +9,7 @@
 	<body>
 		<div id="app"></div>
 		<script type="module">
-			import { ref, watchEffect, reactive, watch, toRef } from './reactivity.esm.js';
+			import { ref, watchEffect, reactive, watch, toRef, toRefs, proxyRefs } from './reactivity.esm.js';
 
 			const obj = { flag: true, name: 'xx', age: 10, foo: { a: 1, b: { bar: 999 } } };
 			const state = reactive(obj);
@@ -64,15 +64,32 @@
 			// }, 1000);
 
 			// 5:
-			const name = toRef(state, 'name');
-			console.log(name);
+			// const name = toRef(state, 'name');
+			// console.log(name);
+
+			// watchEffect(() => {
+			// 	console.log(name.value);
+			// });
+
+			// setTimeout(() => {
+			// 	name.value = 'jjj';
+			// }, 1000);
+
+			// 6.
+			const value = toRefs(state);
+			console.log(value);
+
+			// 7.
+
+			let unRefObj = proxyRefs(value);
 
 			watchEffect(() => {
-				console.log(name.value);
+				console.log(unRefObj.name, unRefObj.age);
 			});
 
 			setTimeout(() => {
-				name.value = 'jjj';
+				unRefObj.name = 'js';
+				unRefObj.age = 10000;
 			}, 1000);
 		</script>
 	</body>

@@ -238,6 +238,21 @@ var ObjectRefImpl = class {
     this._object[this._key] = newValue;
   }
 };
+function proxyRefs(objectWithRef) {
+  return isReactive(objectWithRef) ? objectWithRef : new Proxy(objectWithRef, {
+    get(target, key, receiver) {
+      return unref(Reflect.get(target, key, receiver));
+    },
+    set(target, key, newValue, receiver) {
+      const oldValue = target[key];
+      if (isRef(oldValue) && !isRef(newValue)) {
+        oldValue.value = newValue;
+        return true;
+      }
+      return Reflect.set(target, key, newValue, receiver);
+    }
+  });
+}
 
 // packages/reactivity/src/baseHandlers.ts
 var set = createSetter();
@@ -532,6 +547,7 @@ export {
   isReactive,
   isReadonly,
   isRef,
+  proxyRefs,
   reactive,
   reactiveMap,
   readonly,

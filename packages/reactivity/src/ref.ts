@@ -1,7 +1,7 @@
 import { hasChanged, isArray, isObject } from '@vue/shared';
 import { Dep, createDep } from './dep';
 import { activeEffect, trackEffects, triggerEffects } from './effect';
-import { toRaw, toReactive } from './reactive';
+import { isReactive, toRaw, toReactive } from './reactive';
 
 export interface Ref<T = any> {
 	dep: Dep;
@@ -147,4 +147,25 @@ class ObjectRefImpl<T extends object, K extends keyof T> {
 		// 触发依赖更新
 		this._object[this._key] = newValue;
 	}
+}
+
+// 对ref做解包
+export function proxyRefs<T>(objectWithRef: Ref<T>) {
+	// 如果是reactive 直接返回本身
+	return isReactive(objectWithRef)
+		? objectWithRef
+		: new Proxy(objectWithRef, {
+				get(target, key, receiver) {
+					return unref(Reflect.get(target, key, receiver));
+				},
+				set(target, key, newValue, receiver) {
+					const oldValue = target[key];
+					// 如果老值是ref，并且newValue不能是ref
+					if (isRef(oldValue) && !isRef(newValue)) {
+						oldValue.value = newValue;
+						return true;
+					}
+					return Reflect.set(target, key, newValue, receiver);
+				}
+		  });
 }
