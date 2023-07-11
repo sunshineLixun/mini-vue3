@@ -1,5 +1,6 @@
 import { isArray } from '@vue/shared';
 import { Dep, createDep } from './dep';
+import { recordEffectScope } from './effectScope';
 
 // 全局的effect
 export let activeEffect: ReactiveEffect | undefined;
@@ -54,7 +55,10 @@ export class ReactiveEffect<T = any> {
 	// scheduler记录着：proxy对象set了新的值，会触发scheduler回调，控制依赖更新时机
 	// 这里也可以认为是 proxy对象的属性发生了变化
 
-	constructor(public fn: () => T, public scheduler: EffectScheduler | null = null) {}
+	constructor(public fn: () => T, public scheduler: EffectScheduler | null = null) {
+		// effectScope收集effect
+		recordEffectScope(this);
+	}
 
 	run() {
 		// 如果不是激活态，直接返回回调函数执行结果

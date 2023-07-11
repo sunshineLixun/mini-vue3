@@ -17,6 +17,46 @@ var createDep = (effects) => {
   return dep;
 };
 
+// packages/reactivity/src/effectScope.ts
+var activeEffectScope;
+var EffectScope = class {
+  constructor() {
+    // 标记是否是激活状态
+    this._active = true;
+  }
+  run(fn) {
+    if (this._active) {
+      try {
+        this.parent = activeEffectScope;
+        activeEffectScope = this;
+        return fn();
+      } finally {
+        activeEffectScope = this.parent;
+        this.parent = void 0;
+      }
+    }
+  }
+  stop() {
+    if (this._active) {
+      this.effects.forEach((effect2) => {
+        effect2.stop();
+      });
+      this.effects.length = 0;
+    }
+  }
+};
+function effectScope() {
+  return new EffectScope();
+}
+function recordEffectScope(effect2) {
+  if (activeEffectScope) {
+    (activeEffectScope.effects || (activeEffectScope.effects = [])).push(effect2);
+  }
+}
+function getCurrentScope() {
+  return activeEffectScope;
+}
+
 // packages/reactivity/src/effect.ts
 var activeEffect;
 var targetMap = /* @__PURE__ */ new WeakMap();
@@ -52,6 +92,7 @@ var ReactiveEffect = class {
      * e1 -> e2 -> e1
      */
     this.parent = void 0;
+    recordEffectScope(this);
   }
   run() {
     if (!this.active) {
@@ -543,6 +584,8 @@ export {
   computed,
   createReactiveObject,
   effect,
+  effectScope,
+  getCurrentScope,
   isProxy,
   isReactive,
   isReadonly,
@@ -552,6 +595,7 @@ export {
   reactiveMap,
   readonly,
   readonlyMap,
+  recordEffectScope,
   ref,
   shallowRef,
   stop,
