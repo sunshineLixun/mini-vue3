@@ -50,6 +50,8 @@ class EffectScope {
 
 	parent: EffectScope;
 
+	cleanups: (() => void)[];
+
 	// 记录内部的所有作用域
 	scopes: EffectScope[] | undefined;
 
@@ -79,9 +81,17 @@ class EffectScope {
 	// 将收集到的effect全部stop
 	stop() {
 		if (this._active) {
-			this.effects.forEach(effect => {
-				effect.stop();
-			});
+			if (this.effects) {
+				this.effects.forEach(effect => {
+					effect.stop();
+				});
+				this.effects.length = 0;
+			}
+
+			if (this.cleanups) {
+				this.cleanups.forEach(fn => fn());
+			}
+
 			// 如果有子作用域，表明子作用域不是独立的，执行子作用域的stop
 			if (this.scopes) {
 				this.scopes.forEach(self => {
@@ -89,7 +99,6 @@ class EffectScope {
 				});
 			}
 
-			this.effects.length = 0;
 			this._active = false;
 		}
 	}
@@ -108,4 +117,10 @@ export function recordEffectScope(effect: ReactiveEffect) {
 
 export function getCurrentScope(): EffectScope | undefined {
 	return activeEffectScope;
+}
+
+export function onScopeDispose(fn: () => void) {
+	if (activeEffectScope) {
+		(activeEffectScope.cleanups || (activeEffectScope.cleanups = [])).push(fn);
+	}
 }

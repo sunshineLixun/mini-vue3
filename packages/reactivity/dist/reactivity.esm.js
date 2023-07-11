@@ -44,15 +44,20 @@ var EffectScope = class {
   // 将收集到的effect全部stop
   stop() {
     if (this._active) {
-      this.effects.forEach((effect2) => {
-        effect2.stop();
-      });
+      if (this.effects) {
+        this.effects.forEach((effect2) => {
+          effect2.stop();
+        });
+        this.effects.length = 0;
+      }
+      if (this.cleanups) {
+        this.cleanups.forEach((fn) => fn());
+      }
       if (this.scopes) {
         this.scopes.forEach((self) => {
           self.stop();
         });
       }
-      this.effects.length = 0;
       this._active = false;
     }
   }
@@ -67,6 +72,11 @@ function recordEffectScope(effect2) {
 }
 function getCurrentScope() {
   return activeEffectScope;
+}
+function onScopeDispose(fn) {
+  if (activeEffectScope) {
+    (activeEffectScope.cleanups || (activeEffectScope.cleanups = [])).push(fn);
+  }
 }
 
 // packages/reactivity/src/effect.ts
@@ -602,6 +612,7 @@ export {
   isReactive,
   isReadonly,
   isRef,
+  onScopeDispose,
   proxyRefs,
   reactive,
   reactiveMap,

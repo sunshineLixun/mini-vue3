@@ -9,35 +9,44 @@
 	<body>
 		<div id="app"></div>
 		<script type="module">
-			import { reactive, effect, effectScope } from './reactivity.esm.js';
+			import { reactive, effect, effectScope, onScopeDispose } from './reactivity.esm.js';
 
 			const scope = effectScope();
+			// 1:
+			// scope.run(() => {
+			// 	const state = reactive({ name: 'xxx' });
 
+			// 	// 内部收集了effect， 当调用scope.stop时，其内部会把收集到effect全部stop
+			// 	effect(() => {
+			// 		// 当stop之后，这里就不会在执行输出 kkkk
+			// 		console.log(state.name);
+			// 	});
+
+			// 	setTimeout(() => {
+			// 		state.name = 'kkkk';
+			// 	}, 1000);
+
+			// 	// 传入true就代表是 独立的scope，内部的代码不受最外面的scope的stop方法影响
+			// 	const scope2 = effectScope(true);
+			// 	scope2.run(() => {
+			// 		const state = reactive({ age: 10 });
+
+			// 		// 这里仍然会执行 age++的结果
+			// 		effect(() => console.log(state.age));
+
+			// 		setTimeout(() => {
+			// 			state.age++;
+			// 		}, 1000);
+			// 	});
+			// });
+
+			// scope.stop();
+
+			// 2:
 			scope.run(() => {
-				const state = reactive({ name: 'xxx' });
-
-				// 内部收集了effect， 当调用scope.stop时，其内部会把收集到effect全部stop
-				effect(() => {
-					// 当stop之后，这里就不会在执行输出 kkkk
-					console.log(state.name);
-				});
-
-				setTimeout(() => {
-					state.name = 'kkkk';
-				}, 1000);
-
-				// 传入true就代表是 独立的scope，内部的代码不受最外面的scope的stop方法影响
-				const scope2 = effectScope(true);
-				scope2.run(() => {
-					const state = reactive({ age: 10 });
-
-					// 这里仍然会执行 age++的结果
-					effect(() => console.log(state.age));
-
-					setTimeout(() => {
-						state.age++;
-					}, 1000);
-				});
+				onScopeDispose(() => console.log('stop 清除操作'));
+				onScopeDispose(() => console.log('stop 清除操作'));
+				onScopeDispose(() => console.log('stop 清除操作'));
 			});
 
 			scope.stop();
