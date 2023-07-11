@@ -1,4 +1,4 @@
-# mini*vue3
+# mini-vue3
 
 简版 vue3 实现
 
