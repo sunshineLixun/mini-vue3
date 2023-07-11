@@ -20,9 +20,14 @@ var createDep = (effects) => {
 // packages/reactivity/src/effectScope.ts
 var activeEffectScope;
 var EffectScope = class {
-  constructor() {
+  // detached 是否是独立的，默认不是独立的，受父作用域控制
+  constructor(detached = false) {
+    this.detached = detached;
     // 标记是否是激活状态
     this._active = true;
+    if (!detached && activeEffectScope) {
+      (activeEffectScope.scopes || (activeEffectScope.scopes = [])).push(this);
+    }
   }
   run(fn) {
     if (this._active) {
@@ -36,17 +41,24 @@ var EffectScope = class {
       }
     }
   }
+  // 将收集到的effect全部stop
   stop() {
     if (this._active) {
       this.effects.forEach((effect2) => {
         effect2.stop();
       });
+      if (this.scopes) {
+        this.scopes.forEach((self) => {
+          self.stop();
+        });
+      }
       this.effects.length = 0;
+      this._active = false;
     }
   }
 };
-function effectScope() {
-  return new EffectScope();
+function effectScope(detached) {
+  return new EffectScope(detached);
 }
 function recordEffectScope(effect2) {
   if (activeEffectScope) {
