@@ -24,6 +24,14 @@ importers:
         specifier: workspace:^1.0.0
         version: link:../shared
 
+  packages/runtime-core: {}
+
+  packages/runtime-dom:
+    dependencies:
+      '@vue/runtime-core':
+        specifier: workspace:^
+        version: link:../runtime-core
+
   packages/shared: {}
 
 packages:

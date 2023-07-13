@@ -6,7 +6,8 @@
   "scripts": {
     "dev:reactive": "node scripts/dev.js reactivity -f esm-bundler",
     "dev:shared": "node scripts/dev.js shared -f esm-bundler",
-    "dev:runtime-core": "node scripts/dev.js runtime-core -f esm-bundler"
+    "dev:runtime-core": "node scripts/dev.js runtime-core -f esm-bundler",
+    "dev:runtime-dom": "node scripts/dev.js runtime-dom -f esm-bundler"
   },
   "type": "module",
   "keywords": [],
