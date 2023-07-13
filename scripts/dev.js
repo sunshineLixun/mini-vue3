@@ -16,7 +16,7 @@ const pkg = require(`../packages/${target}/package.json`);
 // resolve output
 const outputFormat = format.startsWith('global') ? 'iife' : format === 'cjs' ? 'cjs' : 'esm';
 
-// packages/reactivity/dist/reactivity.esm.js
+// packages/reactivity/dist/reactivity.esm-bundler.js
 // packages/reactivity/dist/reactivity.global.js
 const outfile = resolve(__dirname, `../packages/${target}/dist/${target}.${format}.js`);
 

@@ -22,4 +22,4 @@ export {
   objectToString,
   toTypeString
 };
-//# sourceMappingURL=shared.esm.js.map
+//# sourceMappingURL=shared.esm-bundler.js.map

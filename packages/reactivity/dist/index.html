@@ -9,7 +9,7 @@
 	<body>
 		<div id="app"></div>
 		<script type="module">
-			import { reactive, effect } from './reactivity.esm.js';
+			import { reactive, effect } from './reactivity.esm-bundler.js';
 
 			const obj = { flag: true, name: 'xx', age: 10, foo: { a: 1, b: { bar: 999 } } };
 			const state = reactive(obj);

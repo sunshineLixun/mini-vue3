@@ -9,7 +9,7 @@
 	<body>
 		<div id="app"></div>
 		<script type="module">
-			import { reactive, toRaw, watchEffect } from './reactivity.esm.js';
+			import { reactive, toRaw, watchEffect } from './reactivity.esm-bundler.js';
 
 			const obj = { flag: true, name: 'xx', age: 10, foo: { a: 1, b: { bar: 999 } }, bar: [1, 2, 3] };
 			const state = reactive(obj);
