@@ -17,3 +17,10 @@ export const toTypeString = (value: unknown): string => objectToString.call(valu
 export const isPlainObject = (val: unknown): val is object => toTypeString(val) === '[object Object]';
 
 export const isNoEmptyValue = (val: unknown) => val !== undefined || val !== null;
+
+export const extend = Object.assign;
+
+// 事件 onXxxx 或者也可以这么写： /^on[A-Z]/
+export const onRE = /^on[^a-z]/;
+
+export const isOn = (key: string) => onRE.test(key);
