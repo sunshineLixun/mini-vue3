@@ -2,6 +2,7 @@ import { VNodeProps } from '@vue/runtime-core';
 
 // 增删改查
 export interface RendererOptions {
+	patchProp(el: Element, key: string, preValue: any, nextValue: any): void;
 	/**
 	 * 插入 (增加、移动)
 	 * @param el 子节点
