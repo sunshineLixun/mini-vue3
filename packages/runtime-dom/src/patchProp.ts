@@ -1,4 +1,4 @@
-// 元素的属性 class  style props event
+// 设置元素的属性 class  style props event
 
 import { RendererOptions } from '@vue/runtime-core';
 import { patchClass } from './modules/class';
