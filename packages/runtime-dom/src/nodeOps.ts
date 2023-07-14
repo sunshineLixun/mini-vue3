@@ -1,7 +1,7 @@
 import { RendererOptions } from '@vue/runtime-core';
 
 // 增删改查
-export const nodeOps: RendererOptions = {
+export const nodeOps: Omit<RendererOptions, 'patchProp'> = {
 	// 增加、插入
 	insert(child, parent, anchor) {
 		parent.insertBefore(child, anchor || null);
