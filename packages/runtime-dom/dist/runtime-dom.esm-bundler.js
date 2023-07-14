@@ -81,7 +81,7 @@ function patchStyle(el, prev, next) {
   }
 }
 
-// packages/runtime-dom/src/modules/event.ts
+// packages/runtime-dom/src/modules/events.ts
 function patchEvent(el, key, nextValue) {
   const name = key.slice(2).toLowerCase();
   const invokers = el._vei || (el._vei = {});
@@ -104,6 +104,15 @@ function createInvoker(initialValue) {
   return invoker;
 }
 
+// packages/runtime-dom/src/modules/attrs.ts
+function patchAttrs(el, key, nextValue) {
+  if (isNoEmptyValue(nextValue)) {
+    el.setAttribute(key, nextValue);
+  } else {
+    el.removeAttribute(key);
+  }
+}
+
 // packages/runtime-dom/src/patchProp.ts
 var patchProp = (el, key, preValue, nextValue) => {
   if (key === "class") {
@@ -112,6 +121,8 @@ var patchProp = (el, key, preValue, nextValue) => {
     patchStyle(el, preValue, nextValue);
   } else if (isOn(key)) {
     patchEvent(el, key, nextValue);
+  } else {
+    patchAttrs(el, key, nextValue);
   }
 };
 
