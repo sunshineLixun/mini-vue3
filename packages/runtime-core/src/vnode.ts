@@ -1,7 +1,14 @@
+import { Ref } from '@vue/reactivity';
 import { ShapeFlags, isString } from '@vue/shared';
 
+// ref='xxx'
+// ref="ref('xxx)"
+// ref="(ref('xxx' | toRefs(reactive))) => void"
+export type VNodeRef = string | Ref | ((ref: Element | null, refs: Record<string, any>) => void);
+
 export type VNodeProps = {
-	key: string | number | symbol;
+	key?: string | number | symbol;
+	ref?: VNodeRef;
 };
 
 /**占位 */
@@ -30,6 +37,10 @@ export type VNodeArrayChildren = Array<VNodeArrayChildren | VNodeChildAtom>;
 export type VNodeChild = VNodeChildAtom | VNodeArrayChildren;
 
 export type VNodeNormalizedChildren = string | VNodeArrayChildren | null;
+
+export function isVNode(value: any): value is VNode {
+	return value ? value.__v_isVNode === true : false;
+}
 
 export interface VNode<ExtraProps = { [key: string]: any }> {
 	/**

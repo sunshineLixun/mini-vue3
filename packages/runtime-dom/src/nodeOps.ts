@@ -31,7 +31,7 @@ export const nodeOps: Omit<RendererOptions, 'patchProp'> = {
 	parentNode(node) {
 		return node.parentNode as Element;
 	},
-	nextSilbing(node) {
+	nextSibling(node) {
 		return node.nextSibling;
 	},
 	quertSelector(selector) {

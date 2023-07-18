@@ -1,4 +1,8 @@
-import { VNodeProps } from '@vue/runtime-core';
+import { VNode, VNodeProps } from '@vue/runtime-core';
+
+export interface Renderer<HostElement = RendererElement> {
+	render: RootRenderFunction<HostElement>;
+}
 
 // 增删改查
 export interface RendererOptions {
@@ -58,7 +62,41 @@ export interface RendererOptions {
 	 * 获取兄弟节点
 	 * @param node
 	 */
-	nextSilbing(node: Node): Node;
+	nextSibling(node: Node): Node;
 
 	quertSelector(selector: string): Element;
+}
+
+export interface RendererNode {
+	[key: string]: any;
+}
+
+export interface RendererElement extends RendererNode {}
+
+export type RootRenderFunction<HostElement = RendererElement> = (vnode: VNode | null, container: HostElement) => void;
+
+export function createRenderer(options: RendererOptions) {
+	return baseCreateRenderer(options);
+}
+
+function baseCreateRenderer(options: RendererOptions) {
+	const {
+		insert: hostInsert,
+		remove: hostRemove,
+		patchProp: hostPatchProp,
+		createElement: hostCreateElement,
+		createText: hostCreateText,
+		createComment: hostCreateComment,
+		setText: hostSetText,
+		setElementText: hostSetElementText,
+		parentNode: hostParentNode,
+		nextSibling: hostNextSibling
+	} = options;
+
+	const render: RootRenderFunction = (vnode, container) => {
+		console.log(vnode, container, options);
+	};
+	return {
+		render
+	};
 }

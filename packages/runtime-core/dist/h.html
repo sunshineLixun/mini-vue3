@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Document</title>
+	</head>
+	<body>
+		<div id="app"></div>
+		<script type="module">
+			import { h, render } from './runtime-core.esm-bundler.js';
+
+			const vnode = h('div', { style: { color: 'red' } }, ['显示的内容']);
+
+			render(vnode, app);
+		</script>
+	</body>
+</html>
