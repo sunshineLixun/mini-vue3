@@ -132,3 +132,8 @@ function createBaseVNode(
 	}
 	return vnode;
 }
+
+// 判断是否是同一个虚拟节点， 因为每个虚拟节点的type和key都是唯一的
+export function isSameVNodeType(n1: VNode, n2: VNode) {
+	return n1.type === n2.type && n1.key === n2.key;
+}

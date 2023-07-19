@@ -1,3 +1,12 @@
+// packages/shared/src/general.ts
+var isObject = (val) => val !== null && typeof val === "object";
+var isArray = Array.isArray;
+var isString = (val) => typeof val === "string";
+var isNoEmptyValue = (val) => val !== void 0 || val !== null;
+var extend = Object.assign;
+var onRE = /^on[^a-z]/;
+var isOn = (key) => onRE.test(key);
+
 // packages/runtime-core/src/renderer.ts
 function createRenderer(options) {
   return baseCreateRenderer(options);
@@ -15,22 +24,57 @@ function baseCreateRenderer(options) {
     parentNode: hostParentNode,
     nextSibling: hostNextSibling
   } = options;
+  const patch = (n1, n2, container, anchor) => {
+    if (n1 === n2) {
+      return;
+    }
+    if (n1 && !isSameVNodeType(n1, n2)) {
+      anchor = getNextHostNode(n1);
+      unmount();
+      n1 = null;
+    }
+    const { type, shapeFlag } = n2;
+    console.log(type, Text, shapeFlag);
+    switch (type) {
+      case Text:
+        processText(n1, n2, container, anchor);
+        break;
+      default:
+        break;
+    }
+  };
+  const processText = (n1, n2, container, anchor) => {
+    if (n1 == null) {
+      n2.el = hostCreateText(n2.children);
+      hostInsert(n2.el, container, anchor);
+    } else {
+      const el = n2.el = n1.el;
+      if (n2.children !== n1.children) {
+        hostSetText(el, n2.children);
+      }
+    }
+  };
+  const unmount = () => {
+  };
+  const getNextHostNode = (vnode) => {
+    if (vnode.shapeFlag & 6 /* COMPONENT */) {
+    }
+    return hostNextSibling(vnode.anchor || vnode.el);
+  };
   const render2 = (vnode, container) => {
-    console.log(vnode, container, options);
+    if (vnode == null) {
+      if (container._vnode) {
+        unmount();
+      }
+    } else {
+      patch(container._vnode || null, vnode, container, null);
+    }
+    container._vnode = vnode;
   };
   return {
     render: render2
   };
 }
-
-// packages/shared/src/general.ts
-var isObject = (val) => val !== null && typeof val === "object";
-var isArray = Array.isArray;
-var isString = (val) => typeof val === "string";
-var isNoEmptyValue = (val) => val !== void 0 || val !== null;
-var extend = Object.assign;
-var onRE = /^on[^a-z]/;
-var isOn = (key) => onRE.test(key);
 
 // packages/runtime-core/src/vnode.ts
 var Fragment = Symbol.for("v-fgt");
@@ -61,6 +105,9 @@ function createBaseVNode(type, props = null, children = null, shapeFlag = type =
     vnode.shapeFlag |= isString(children) ? 8 /* TEXT_CHILDREN */ : 16 /* ARRAY_CHILDREN */;
   }
   return vnode;
+}
+function isSameVNodeType(n1, n2) {
+  return n1.type === n2.type && n1.key === n2.key;
 }
 
 // packages/runtime-core/src/h.ts
@@ -222,6 +269,7 @@ export {
   createRenderer,
   createVNode,
   h,
+  isSameVNodeType,
   isVNode,
   render
 };
