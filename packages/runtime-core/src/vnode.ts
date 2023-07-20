@@ -1,5 +1,6 @@
 import { Ref } from '@vue/reactivity';
 import { ShapeFlags, isString } from '@vue/shared';
+import { RendererElement, RendererNode } from './renderer';
 
 // ref='xxx'
 // ref="ref('xxx)"
@@ -42,7 +43,7 @@ export function isVNode(value: any): value is VNode {
 	return value ? value.__v_isVNode === true : false;
 }
 
-export interface VNode<ExtraProps = { [key: string]: any }> {
+export interface VNode<HostNode = RendererNode, ExtraProps = { [key: string]: any }> {
 	/**
 	 * vnode标识
 	 */
@@ -71,11 +72,11 @@ export interface VNode<ExtraProps = { [key: string]: any }> {
 	/**
 	 * 映射的真实接单
 	 */
-	el: Node | null;
+	el: HostNode | null;
 	/**
 	 * 对应的位置
 	 */
-	anchor: Node | null; // fragment anchor
+	anchor: HostNode | null; // fragment anchor
 
 	/**node元素类型flag */
 	/**标记自己是什么类型和孩子是什么类型 */

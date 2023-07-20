@@ -24,6 +24,20 @@ function baseCreateRenderer(options) {
     parentNode: hostParentNode,
     nextSibling: hostNextSibling
   } = options;
+  const mountElement = (vnode, container, anchor) => {
+    let el;
+    const { type, shapeFlag, props } = vnode;
+    el = vnode.el = hostCreateElement(type);
+  };
+  const patchElement = (n1, n2, container, anchor) => {
+  };
+  const processElement = (n1, n2, container, anchor) => {
+    if (n1 == null) {
+      mountElement(n2, container, anchor);
+    } else {
+      patchElement(n1, n2, container, anchor);
+    }
+  };
   const patch = (n1, n2, container, anchor) => {
     if (n1 === n2) {
       return;
@@ -35,23 +49,8 @@ function baseCreateRenderer(options) {
     }
     const { type, shapeFlag } = n2;
     console.log(type, Text, shapeFlag);
-    switch (type) {
-      case Text:
-        processText(n1, n2, container, anchor);
-        break;
-      default:
-        break;
-    }
-  };
-  const processText = (n1, n2, container, anchor) => {
-    if (n1 == null) {
-      n2.el = hostCreateText(n2.children);
-      hostInsert(n2.el, container, anchor);
-    } else {
-      const el = n2.el = n1.el;
-      if (n2.children !== n1.children) {
-        hostSetText(el, n2.children);
-      }
+    if (shapeFlag & 1 /* ELEMENT */) {
+      processElement(n1, n2, container, anchor);
     }
   };
   const unmount = () => {
