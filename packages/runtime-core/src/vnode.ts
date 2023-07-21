@@ -1,5 +1,5 @@
 import { Ref } from '@vue/reactivity';
-import { ShapeFlags, isString } from '@vue/shared';
+import { ShapeFlags, isArray, isObject, isString } from '@vue/shared';
 import { RendererElement, RendererNode } from './renderer';
 
 // ref='xxx'
@@ -137,4 +137,28 @@ function createBaseVNode(
 // 判断是否是同一个虚拟节点， 因为每个虚拟节点的type和key都是唯一的
 export function isSameVNodeType(n1: VNode, n2: VNode) {
 	return n1.type === n2.type && n1.key === n2.key;
+}
+
+// eg. h('div', props, h('span', props))  h('div', props, [h('span', props)])
+// 处理child 转出vnode
+export function normalizeVNode(child: VNodeChild): VNode {
+	if (child === null || typeof child === 'boolean') {
+		// 注释节点
+		return createVNode(Comment);
+	} else if (isArray(child)) {
+		// 数组的话 父元素弄个空的占位符：Fragment，child copy一份
+		return createVNode(Fragment, null, child.slice());
+	} else if (typeof child === 'object') {
+		// 本身就是 vnode
+		// TODO: cloneVNode
+		return CloneVNode(child);
+	} else {
+		// string numbers
+		return createVNode(Text, null, String(child));
+	}
+}
+
+// TODO:实现
+export function CloneVNode(vnode: VNode): VNode {
+	return vnode;
 }

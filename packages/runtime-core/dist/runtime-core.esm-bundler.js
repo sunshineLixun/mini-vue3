@@ -24,10 +24,21 @@ function baseCreateRenderer(options) {
     parentNode: hostParentNode,
     nextSibling: hostNextSibling
   } = options;
+  const mountChildren = (children, el, anchor, start = 0) => {
+    for (let i = start; i < children.length; i++) {
+      const child = normalizeVNode(children[i]);
+      patch(null, child, el, anchor);
+    }
+  };
   const mountElement = (vnode, container, anchor) => {
     let el;
-    const { type, shapeFlag, props } = vnode;
+    const { type, shapeFlag, props, children } = vnode;
     el = vnode.el = hostCreateElement(type);
+    if (shapeFlag & 8 /* TEXT_CHILDREN */) {
+      hostSetElementText(el, children);
+    } else if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+      mountChildren(children, el, null);
+    }
   };
   const patchElement = (n1, n2, container, anchor) => {
   };
@@ -84,7 +95,7 @@ function isVNode(value) {
   return value ? value.__v_isVNode === true : false;
 }
 var normalizeKey = ({ key }) => key != null ? key : null;
-function createVNode(type, props = null, children = null) {
+function createVNode2(type, props = null, children = null) {
   const shapeFlag = isString(type) ? 1 /* ELEMENT */ : 0;
   return createBaseVNode(type, props, children, shapeFlag);
 }
@@ -108,6 +119,20 @@ function createBaseVNode(type, props = null, children = null, shapeFlag = type =
 function isSameVNodeType(n1, n2) {
   return n1.type === n2.type && n1.key === n2.key;
 }
+function normalizeVNode(child) {
+  if (child === null || typeof child === "boolean") {
+    return createVNode2(Comment);
+  } else if (isArray(child)) {
+    return createVNode2(Fragment, null, child.slice());
+  } else if (typeof child === "object") {
+    return CloneVNode(child);
+  } else {
+    return createVNode2(Text, null, String(child));
+  }
+}
+function CloneVNode(vnode) {
+  return vnode;
+}
 
 // packages/runtime-core/src/h.ts
 function h(type, propsOrChildren, children) {
@@ -115,11 +140,11 @@ function h(type, propsOrChildren, children) {
   if (l === 2) {
     if (isObject(propsOrChildren) && !isArray(propsOrChildren)) {
       if (isVNode(propsOrChildren)) {
-        return createVNode(type, null, [propsOrChildren]);
+        return createVNode2(type, null, [propsOrChildren]);
       }
-      return createVNode(type, propsOrChildren);
+      return createVNode2(type, propsOrChildren);
     } else {
-      return createVNode(type, null, propsOrChildren);
+      return createVNode2(type, null, propsOrChildren);
     }
   } else {
     if (l > 3) {
@@ -127,7 +152,7 @@ function h(type, propsOrChildren, children) {
     } else if (l === 3 && isVNode(children)) {
       children = [children];
     }
-    return createVNode(type, propsOrChildren, children);
+    return createVNode2(type, propsOrChildren, children);
   }
 }
 
@@ -261,15 +286,17 @@ var render = (...args) => {
   ensureRenderer().render(...args);
 };
 export {
+  CloneVNode,
   Comment,
   Fragment,
   Static,
   Text,
   createRenderer,
-  createVNode,
+  createVNode2 as createVNode,
   h,
   isSameVNodeType,
   isVNode,
+  normalizeVNode,
   render
 };
 //# sourceMappingURL=runtime-core.esm-bundler.js.map

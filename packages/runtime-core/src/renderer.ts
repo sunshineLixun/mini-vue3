@@ -1,4 +1,12 @@
-import { Text, VNode, VNodeProps, isSameVNodeType } from '@vue/runtime-core';
+import {
+	Text,
+	VNode,
+	VNodeArrayChildren,
+	VNodeProps,
+	createVNode,
+	isSameVNodeType,
+	normalizeVNode
+} from '@vue/runtime-core';
 import { ShapeFlags } from '@vue/shared';
 
 export interface Renderer<HostElement = RendererElement> {
@@ -91,6 +99,13 @@ type MountElementFn = (vnode: VNode, container: RendererElement, anchor: Rendere
 
 type PatchElementFn = (n1: VNode | null, n2: VNode, container: RendererElement, anchor: RendererNode | null) => void;
 
+type MountChildrenFn = (
+	children: VNodeArrayChildren,
+	container: RendererElement,
+	anchor: RendererNode | null,
+	start?: number
+) => void;
+
 export function createRenderer(options: RendererOptions) {
 	return baseCreateRenderer(options);
 }
@@ -109,14 +124,37 @@ function baseCreateRenderer(options: RendererOptions) {
 		nextSibling: hostNextSibling
 	} = options;
 
+	// 递归处理children
+	// eg. h('div', props, [h('span', props)])
+	const mountChildren: MountChildrenFn = (children, el, anchor, start = 0) => {
+		for (let i = start; i < children.length; i++) {
+			// 这里的child可能是普通文本(string, number)，也可能是vnode，也可能是 [h('span'), h('div')]
+			const child = normalizeVNode(children[i]);
+			// 递归处理
+			patch(null, child, el, anchor);
+		}
+	};
+
+	// 初次渲染
 	const mountElement: MountElementFn = (vnode, container, anchor) => {
 		// 真实节点
 		let el: RendererElement;
 
-		const { type, shapeFlag, props } = vnode;
+		const { type, shapeFlag, props, children } = vnode;
+		// type ->  div  span .... 普通元素
 		el = vnode.el = hostCreateElement(type as string);
+
+		if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+			// eg. h('div', props, 'xxx')
+			hostSetElementText(el, children as string);
+		} else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+			// eg. h('div', props, [h('span', props)])
+			// h('div', props, ['xxx', 'ccccc'])
+			mountChildren(children as VNodeArrayChildren[], el, null);
+		}
 	};
 
+	// diff
 	const patchElement: PatchElementFn = (n1, n2, container, anchor) => {};
 
 	const processElement: ProcessElementFn = (n1, n2, container, anchor) => {
