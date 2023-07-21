@@ -39,6 +39,7 @@ function baseCreateRenderer(options) {
     } else if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
       mountChildren(children, el, null);
     }
+    hostInsert(el, container, anchor);
   };
   const patchElement = (n1, n2, container, anchor) => {
   };
@@ -59,7 +60,6 @@ function baseCreateRenderer(options) {
       n1 = null;
     }
     const { type, shapeFlag } = n2;
-    console.log(type, Text, shapeFlag);
     if (shapeFlag & 1 /* ELEMENT */) {
       processElement(n1, n2, container, anchor);
     }
@@ -88,7 +88,7 @@ function baseCreateRenderer(options) {
 
 // packages/runtime-core/src/vnode.ts
 var Fragment = Symbol.for("v-fgt");
-var Text = Symbol.for("v-txt");
+var Text2 = Symbol.for("v-txt");
 var Comment = Symbol.for("v-cmt");
 var Static = Symbol.for("v-stc");
 function isVNode(value) {
@@ -127,7 +127,7 @@ function normalizeVNode(child) {
   } else if (typeof child === "object") {
     return CloneVNode(child);
   } else {
-    return createVNode2(Text, null, String(child));
+    return createVNode2(Text2, null, String(child));
   }
 }
 function CloneVNode(vnode) {
@@ -290,7 +290,7 @@ export {
   Comment,
   Fragment,
   Static,
-  Text,
+  Text2 as Text,
   createRenderer,
   createVNode2 as createVNode,
   h,

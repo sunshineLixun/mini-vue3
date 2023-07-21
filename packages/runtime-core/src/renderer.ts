@@ -152,6 +152,9 @@ function baseCreateRenderer(options: RendererOptions) {
 			// h('div', props, ['xxx', 'ccccc'])
 			mountChildren(children as VNodeArrayChildren[], el, null);
 		}
+
+		// 在container上插入改真实节点
+		hostInsert(el, container, anchor);
 	};
 
 	// diff
@@ -180,9 +183,8 @@ function baseCreateRenderer(options: RendererOptions) {
 			unmount();
 			n1 = null;
 		}
-
 		const { type, shapeFlag } = n2;
-		console.log(type, Text, shapeFlag);
+
 		//  TODO: 判断节点类型, 有Text Comment Fragment Static
 		// 这里先处理普通元素
 		if (shapeFlag & ShapeFlags.ELEMENT) {
