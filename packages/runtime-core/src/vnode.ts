@@ -33,9 +33,9 @@ export type Data = Record<string, unknown>;
 
 type VNodeChildAtom = VNode | string | number | boolean | null | undefined | void;
 
-export type VNodeArrayChildren = Array<VNodeArrayChildren | VNodeChildAtom>;
-
 export type VNodeChild = VNodeChildAtom | VNodeArrayChildren;
+
+export type VNodeArrayChildren = Array<VNodeChild>;
 
 export type VNodeNormalizedChildren = string | VNodeArrayChildren | null;
 
