@@ -1,3 +1,13 @@
+// packages/shared/src/makeMap.ts
+function makeMap(str) {
+  const map = /* @__PURE__ */ Object.create(null);
+  const strs = str.split(",");
+  for (let i = 0; i < strs.length; i++) {
+    map[strs[i]] = true;
+  }
+  return (val) => !!map[val];
+}
+
 // packages/shared/src/general.ts
 var isObject = (val) => val !== null && typeof val === "object";
 var isArray = Array.isArray;
@@ -6,6 +16,7 @@ var isNoEmptyValue = (val) => val !== void 0 || val !== null;
 var extend = Object.assign;
 var onRE = /^on[^a-z]/;
 var isOn = (key) => onRE.test(key);
+var isReservedProp = makeMap(",key,ref");
 
 // packages/runtime-core/src/renderer.ts
 function createRenderer(options) {
@@ -38,6 +49,13 @@ function baseCreateRenderer(options) {
       hostSetElementText(el, children);
     } else if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
       mountChildren(children, el, null);
+    }
+    if (props) {
+      for (const key in props) {
+        if (!isReservedProp(key)) {
+          hostPatchProp(el, key, null, props[key]);
+        }
+      }
     }
     hostInsert(el, container, anchor);
   };
@@ -95,6 +113,12 @@ function isVNode(value) {
   return value ? value.__v_isVNode === true : false;
 }
 var normalizeKey = ({ key }) => key != null ? key : null;
+var normalizeRef = ({ ref }) => {
+  if (typeof ref === "number") {
+    ref = String(ref);
+  }
+  return ref;
+};
 function createVNode2(type, props = null, children = null) {
   const shapeFlag = isString(type) ? 1 /* ELEMENT */ : 0;
   return createBaseVNode(type, props, children, shapeFlag);
@@ -104,7 +128,8 @@ function createBaseVNode(type, props = null, children = null, shapeFlag = type =
     __v_isVNode: true,
     type,
     props,
-    key: normalizeKey(props),
+    key: props && normalizeKey(props),
+    ref: props && normalizeRef(props),
     children,
     el: null,
     // 真实节点 初始化为null
@@ -216,9 +241,9 @@ function patchStyle(el, prev, next) {
           style[key] = "";
         }
       }
-      for (const key in next) {
-        style[key] = next[key];
-      }
+    }
+    for (const key in next) {
+      style[key] = next[key];
     }
   } else {
     if (isCssString) {

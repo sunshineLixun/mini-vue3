@@ -14,16 +14,16 @@ export function patchStyle(el: Element, prev: Style, next: Style) {
 		if (prev && !isPrevCssString) {
 			// 说明老值 和新值都是对象
 			for (const key in prev) {
-				// 老值 在新的值里面没有
+				// 老值 在新的值里面没有，删除
 				if (!isNoEmptyValue(next[key])) {
 					style[key] = '';
 				}
 			}
+		}
 
-			// 设置新的值
-			for (const key in next) {
-				style[key] = next[key];
-			}
+		// 设置新的值
+		for (const key in next) {
+			style[key] = next[key];
 		}
 	} else {
 		// eg. <div style=""></div>

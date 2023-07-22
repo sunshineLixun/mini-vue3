@@ -10,9 +10,27 @@
 		<script type="module">
 			import { h, render } from './runtime-core.esm-bundler.js';
 
-			const vnode = h('div', { style: { color: 'red' } }, '显示的内容');
+			// const vnode = h('div', { style: { color: 'blue' } }, '显示的内容');
+			// render(vnode, app);
 
-			render(vnode, app);
+			const vnode2 = h(
+				'div',
+				{ style: { color: 'red' } },
+				h(
+					'span',
+					{
+						style: {
+							color: 'black',
+							width: '1000px',
+							height: '200px',
+							background: 'yellow'
+						}
+					},
+					'span的内容'
+				)
+			);
+
+			render(vnode2, app);
 		</script>
 	</body>
 </html>

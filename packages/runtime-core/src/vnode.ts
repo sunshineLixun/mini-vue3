@@ -1,6 +1,6 @@
 import { Ref } from '@vue/reactivity';
-import { ShapeFlags, isArray, isObject, isString } from '@vue/shared';
-import { RendererElement, RendererNode } from './renderer';
+import { ShapeFlags, isArray, isString } from '@vue/shared';
+import { RendererNode } from './renderer';
 
 // ref='xxx'
 // ref="ref('xxx)"
@@ -62,6 +62,8 @@ export interface VNode<HostNode = RendererNode, ExtraProps = { [key: string]: an
 	 */
 	key: string | number | symbol | null;
 
+	ref: VNodeRef | null;
+
 	/**
 	 * 孩子，孩子的类型可以是 空、文本、node，以及数据[文本]、数组[node]
 	 */
@@ -86,6 +88,12 @@ export interface VNode<HostNode = RendererNode, ExtraProps = { [key: string]: an
 /**处理key */
 const normalizeKey = ({ key }: VNodeProps): VNode['key'] => (key != null ? key : null);
 
+const normalizeRef = ({ ref }: VNodeProps): VNode['ref'] => {
+	if (typeof ref === 'number') {
+		ref = String(ref);
+	}
+	return ref;
+};
 /**
  * 创建虚拟dom，可能是文本、div普通元素、自定义组件、注释、Fragment、静态节点、Teleport、Suspense
  */
@@ -118,7 +126,8 @@ function createBaseVNode(
 		__v_isVNode: true,
 		type,
 		props,
-		key: normalizeKey(props),
+		key: props && normalizeKey(props),
+		ref: props && normalizeRef(props),
 		children,
 		el: null, // 真实节点 初始化为null
 		anchor: null,

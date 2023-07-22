@@ -7,7 +7,7 @@ import {
 	isSameVNodeType,
 	normalizeVNode
 } from '@vue/runtime-core';
-import { ShapeFlags } from '@vue/shared';
+import { ShapeFlags, isReservedProp } from '@vue/shared';
 
 export interface Renderer<HostElement = RendererElement> {
 	render: RootRenderFunction<HostElement>;
@@ -151,6 +151,15 @@ function baseCreateRenderer(options: RendererOptions) {
 			// eg. h('div', props, [h('span', props)])
 			// h('div', props, ['xxx', 'ccccc'])
 			mountChildren(children as VNodeArrayChildren[], el, null);
+		}
+
+		// 处理props
+		if (props) {
+			for (const key in props) {
+				if (!isReservedProp(key)) {
+					hostPatchProp(el, key, null, props[key]);
+				}
+			}
 		}
 
 		// 在container上插入改真实节点

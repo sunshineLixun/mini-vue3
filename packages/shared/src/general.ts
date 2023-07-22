@@ -1,3 +1,5 @@
+import { makeMap } from './makeMap';
+
 export const isObject = (val: unknown): val is Record<any, any> => val !== null && typeof val === 'object';
 
 export const hasChanged = (value: any, oldValue: any): boolean => !Object.is(value, oldValue);
@@ -24,3 +26,6 @@ export const extend = Object.assign;
 export const onRE = /^on[^a-z]/;
 
 export const isOn = (key: string) => onRE.test(key);
+
+// 下面这些key是vue内部保留的关键字，元素自定义属性props一般不允许用下面的key
+export const isReservedProp = makeMap(',key,ref');
