@@ -13,22 +13,24 @@
 			// const vnode = h('div', { style: { color: 'blue' } }, '显示的内容');
 			// render(vnode, app);
 
-			const vnode2 = h(
-				'div',
-				{ style: { color: 'red' } },
-				h(
+			const childrens = ['span1', 'span2', 'span2'].map(item => {
+				return h(
 					'span',
 					{
 						style: {
-							color: 'black',
-							width: '1000px',
-							height: '200px',
-							background: 'yellow'
+							display: 'flex',
+							color: 'red'
 						}
 					},
-					'span的内容'
-				)
-			);
+					item
+				);
+			});
+
+			const vnode2 = h('div', { style: { color: 'red' } }, childrens);
+
+			setTimeout(() => {
+				render(h('span', '第二次span'), app);
+			}, 1000);
 
 			render(vnode2, app);
 		</script>

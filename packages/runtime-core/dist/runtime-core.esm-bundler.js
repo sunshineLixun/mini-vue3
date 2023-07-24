@@ -74,7 +74,7 @@ function baseCreateRenderer(options) {
     }
     if (n1 && !isSameVNodeType(n1, n2)) {
       anchor = getNextHostNode(n1);
-      unmount();
+      unmount(n1);
       n1 = null;
     }
     const { type, shapeFlag } = n2;
@@ -82,7 +82,15 @@ function baseCreateRenderer(options) {
       processElement(n1, n2, container, anchor);
     }
   };
-  const unmount = () => {
+  const unmount = (vnode) => {
+    remove(vnode);
+  };
+  const remove = (vnode) => {
+    performRemove(vnode);
+  };
+  const performRemove = (vnode) => {
+    const { el } = vnode;
+    hostRemove(el);
   };
   const getNextHostNode = (vnode) => {
     if (vnode.shapeFlag & 6 /* COMPONENT */) {
@@ -92,7 +100,7 @@ function baseCreateRenderer(options) {
   const render2 = (vnode, container) => {
     if (vnode == null) {
       if (container._vnode) {
-        unmount();
+        unmount(container._vnode);
       }
     } else {
       patch(container._vnode || null, vnode, container, null);

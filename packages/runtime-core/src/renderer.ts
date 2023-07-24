@@ -99,6 +99,10 @@ type MountElementFn = (vnode: VNode, container: RendererElement, anchor: Rendere
 
 type PatchElementFn = (n1: VNode | null, n2: VNode, container: RendererElement, anchor: RendererNode | null) => void;
 
+type UnmountFn = (vnode: VNode) => void;
+
+type RemoveFn = (vnode: VNode) => void;
+
 type MountChildrenFn = (
 	children: VNodeArrayChildren,
 	container: RendererElement,
@@ -189,7 +193,9 @@ function baseCreateRenderer(options: RendererOptions) {
 			// 获取老节点相邻的节点
 			anchor = getNextHostNode(n1);
 			// 存在老节点，并且新节点和老节点不一样，卸载老节点
-			unmount();
+			unmount(n1);
+
+			// 删除n1, 代表为初次渲染
 			n1 = null;
 		}
 		const { type, shapeFlag } = n2;
@@ -202,8 +208,19 @@ function baseCreateRenderer(options: RendererOptions) {
 		}
 	};
 
-	// TODO:卸载
-	const unmount = () => {};
+	const unmount: UnmountFn = vnode => {
+		remove(vnode);
+	};
+
+	const remove: RemoveFn = vnode => {
+		// 保持跟源码一致
+		performRemove(vnode);
+	};
+
+	const performRemove = (vnode: VNode) => {
+		const { el } = vnode;
+		hostRemove(el);
+	};
 
 	const getNextHostNode: NextFn = vnode => {
 		if (vnode.shapeFlag & ShapeFlags.COMPONENT) {
@@ -217,7 +234,7 @@ function baseCreateRenderer(options: RendererOptions) {
 		if (vnode == null) {
 			// 没有新节点 但是有旧的节点，要删除 卸载掉
 			if (container._vnode) {
-				unmount();
+				unmount(container._vnode);
 			}
 		} else {
 			patch(container._vnode || null, vnode, container, null);
