@@ -42,6 +42,8 @@ function baseCreateRenderer(options) {
       patch(null, child, el, anchor);
     }
   };
+  const patchChildren = (n1, n2, container) => {
+  };
   const mountElement = (vnode, container, anchor) => {
     let el;
     const { type, shapeFlag, props, children } = vnode;
@@ -197,7 +199,7 @@ function CloneVNode(vnode) {
 }
 
 // packages/runtime-core/src/h.ts
-function h(type, propsOrChildren, children) {
+function h(type, propsOrChildren, children, ..._) {
   const l = arguments.length;
   if (l === 2) {
     if (isObject(propsOrChildren) && !isArray(propsOrChildren)) {

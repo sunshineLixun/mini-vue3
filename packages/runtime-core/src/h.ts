@@ -25,7 +25,7 @@ import { VNode, createVNode, isVNode } from './vnode';
 // h(Component, {}, () => {}) // default slot
 // h(Component, {}, {}) // named slots
 
-export function h(type: any, propsOrChildren?: any, children?: any): VNode {
+export function h(type: any, propsOrChildren?: any, children?: any, ..._: any[]): VNode {
 	// 判断参数长度
 
 	const l = arguments.length;
@@ -45,7 +45,7 @@ export function h(type: any, propsOrChildren?: any, children?: any): VNode {
 			// h('div', {})
 			return createVNode(type, propsOrChildren);
 		} else {
-			// 第二个参数是文本
+			// 第二个参数是children
 			// h('div', 'xxx')
 			return createVNode(type, null, propsOrChildren);
 		}

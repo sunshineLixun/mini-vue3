@@ -97,6 +97,8 @@ type RemoveFn = (vnode: VNode) => void;
 
 type PatchPropsFn = (el: RendererElement, oldProps: Data, newProps: Data) => void;
 
+type PatchChildrenFn = (n1: VNode | null, n2: VNode, container: RendererElement) => void;
+
 type MountChildrenFn = (
 	children: VNodeArrayChildren,
 	container: RendererElement,
@@ -132,6 +134,21 @@ function baseCreateRenderer(options: RendererOptions) {
 			patch(null, child, el, anchor);
 		}
 	};
+
+	/**
+	 * 比对子元素： 有以下几种情况
+	 *       新           旧          diff
+	 * 1:   文本          数组        删除旧子元素，设置新的文本内容
+	 * 2:   文本          文本        更新文本
+	 * 3:   文本          空          更新文本
+	 * 4:   数组          数组        diff
+	 * 5:   数组          文本        清空文本，渲染新的数组children
+	 * 6:   数组          空          直接渲染数组children
+	 * 7:  	空            数组        删除所有子元素
+	 * 8:   空           文本         清空文本
+	 * 9:   空            空          忽略
+	 */
+	const patchChildren: PatchChildrenFn = (n1, n2, container) => {};
 
 	// 初次渲染
 	const mountElement: MountElementFn = (vnode, container, anchor) => {

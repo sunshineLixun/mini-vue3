@@ -43,11 +43,20 @@
 			// render(vnode, app);
 
 			// 5: patch props
-			let vnode = h('div', { style: { color: 'blue' } }, '显示的内容');
+
+			function onDiv() {
+				console.log('onDiv');
+			}
+
+			function onDiv2() {
+				console.log('onDiv2');
+			}
+
+			let vnode = h('div', { class: 'classA', style: { color: 'blue' }, onClick: onDiv }, '显示的内容');
 			render(vnode, app);
 
 			setTimeout(() => {
-				vnode = h('div', { style: { color: 'red' } }, '显示的内容');
+				vnode = h('div', { class: 'classB', style: { color: 'red' }, onClick: onDiv2 }, '显示的内容');
 				render(vnode, app);
 			}, 1000);
 		</script>
