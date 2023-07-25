@@ -1,4 +1,13 @@
-import { Data, VNode, VNodeArrayChildren, VNodeProps, isSameVNodeType, normalizeVNode } from '@vue/runtime-core';
+import {
+	Data,
+	VNode,
+	VNodeArrayChildren,
+	VNodeProps,
+	isSameVNodeType,
+	normalizeVNode,
+	Text,
+	Comment
+} from '@vue/runtime-core';
 import { EMPTY_OBJ, ShapeFlags, isReservedProp } from '@vue/shared';
 
 export interface Renderer<HostElement = RendererElement> {
@@ -97,7 +106,9 @@ type RemoveFn = (vnode: VNode) => void;
 
 type PatchPropsFn = (el: RendererElement, oldProps: Data, newProps: Data) => void;
 
-type PatchChildrenFn = (n1: VNode | null, n2: VNode, container: RendererElement) => void;
+type PatchChildrenFn = (n1: VNode | null, n2: VNode, container: RendererElement, anchor: RendererNode | null) => void;
+
+type UnmountChildrenFn = (children: VNode[]) => void;
 
 type MountChildrenFn = (
 	children: VNodeArrayChildren,
@@ -124,6 +135,7 @@ function baseCreateRenderer(options: RendererOptions) {
 		nextSibling: hostNextSibling
 	} = options;
 
+	// 挂载子元素
 	// 递归处理children
 	// eg. h('div', props, [h('span', props)])
 	const mountChildren: MountChildrenFn = (children, el, anchor, start = 0) => {
@@ -135,8 +147,17 @@ function baseCreateRenderer(options: RendererOptions) {
 		}
 	};
 
+	// 卸载所有子元素
+	const unmountChildren: UnmountChildrenFn = childrens => {
+		for (let i = 0; i < childrens.length; i++) {
+			unmount(childrens[i]);
+		}
+	};
+
 	/**
-	 * 比对子元素： 有以下几种情况
+	 * 总体来说是子元素有3种情况：文本 数组 空
+	 * 下面可以细分9种场景
+	 * 比对子元素： 有以下几种情况：
 	 *       新           旧          diff
 	 * 1:   文本          数组        删除旧子元素，设置新的文本内容
 	 * 2:   文本          文本        更新文本
@@ -146,9 +167,60 @@ function baseCreateRenderer(options: RendererOptions) {
 	 * 6:   数组          空          直接渲染数组children
 	 * 7:  	空            数组        删除所有子元素
 	 * 8:   空           文本         清空文本
-	 * 9:   空            空          忽略
+	 * 9:   空            空          忽略 不处理
 	 */
-	const patchChildren: PatchChildrenFn = (n1, n2, container) => {};
+	const patchChildren: PatchChildrenFn = (n1, n2, container, anchor) => {
+		// 老的子元素
+		const c1 = n1.children;
+		// 新的子元素
+		const c2 = n2.children;
+
+		const prevShapFlags = n1 ? n1.shapeFlag : 0;
+
+		const { shapeFlag } = n2;
+
+		// 如果新children是文本 -> 对应前三种情况
+		if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+			// 老值是数组 -> 对应第1种情况
+			if (prevShapFlags & ShapeFlags.ARRAY_CHILDREN) {
+				// 删除旧的子元素，设置新的文本内容
+				unmountChildren(c1 as VNode[]);
+			}
+
+			// 第一种情况，旧值已经被删除子节点了，剩下2、3直接替换更新即可
+			if (c1 !== c2) {
+				hostSetElementText(container, c2 as string);
+			}
+		} else {
+			// 对应后面几种情况: 新值是： 数组， 空
+			if (prevShapFlags && ShapeFlags.ARRAY_CHILDREN) {
+				if (shapeFlag && ShapeFlags.ARRAY_CHILDREN) {
+					// 新老值 都是 数组 -> 对应第4种情况
+					// 重点： 全量 diff
+					// 这里是情况最复杂的，也是最喜欢问考点的：
+					// 1：为啥循环要指定key
+				} else {
+					// 这个分支对应第7种情况，因为第1种情况走了上面的if分支
+					// 新值是空的，直接卸载老值
+					unmountChildren(c1 as VNode[]);
+				}
+			} else {
+				// 这个分2种情况：旧值是空（对应的新值是文本或者是数组）-> 如果新值是文本，会走进一个if判断； 新值是数组，挂载新的元素
+				// 或者旧值是文本（对应的新值文本或者是数组）-> 卸载 旧的文本内容，挂载新的元素
+
+				// 卸载旧的文本内容
+				if (prevShapFlags && ShapeFlags.TEXT_CHILDREN) {
+					// 设置空数据就行
+					hostSetElementText(container, '');
+				}
+
+				if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+					// 挂载新的元素
+					mountChildren(c2 as VNodeArrayChildren, container, anchor);
+				}
+			}
+		}
+	};
 
 	// 初次渲染
 	const mountElement: MountElementFn = (vnode, container, anchor) => {
@@ -222,8 +294,12 @@ function baseCreateRenderer(options: RendererOptions) {
 		const oldProps = n1.props || EMPTY_OBJ;
 		const newProps = n2.props || EMPTY_OBJ;
 
+		// 1: children
+		patchChildren(n1, n2, container, anchor);
+
+		// 2: props
 		// TODO: 这里可以根据 编译阶段 设置 patchFlag 来判断是更新class style props、动态props
-		// 这里先全量diff props, 后续编译阶段可以结合起来 判断
+		// 这里先全量diff props, 后续编译阶段可以结合起来 判断 patchFlag
 		patchProps(el, oldProps, newProps);
 	};
 
@@ -247,6 +323,7 @@ function baseCreateRenderer(options: RendererOptions) {
 			// 获取老节点相邻的节点
 			anchor = getNextHostNode(n1);
 			// 存在老节点，并且新节点和老节点不一样，卸载老节点
+
 			unmount(n1);
 
 			// 删除n1, 代表为初次渲染
@@ -255,15 +332,25 @@ function baseCreateRenderer(options: RendererOptions) {
 		const { type, shapeFlag } = n2;
 
 		//  TODO: 判断节点类型, 有Text Comment Fragment Static
-		// 这里先处理普通元素 div  span ul
-		if (shapeFlag & ShapeFlags.ELEMENT) {
-			// 普通元素
-			processElement(n1, n2, container, anchor);
-		} else if (shapeFlag & ShapeFlags.COMPONENT) {
-			// 组件
+		switch (type) {
+			case Text:
+				break;
+			case Comment:
+				break;
+			default:
+				// 这里先处理普通元素 div  span ul
+				if (shapeFlag & ShapeFlags.ELEMENT) {
+					// 普通元素
+					processElement(n1, n2, container, anchor);
+				} else if (shapeFlag & ShapeFlags.COMPONENT) {
+					// 组件
+					// TODO: 组件
+				}
+				break;
 		}
 	};
 
+	// 删除元素
 	const unmount: UnmountFn = vnode => {
 		remove(vnode);
 	};

@@ -42,7 +42,38 @@ function baseCreateRenderer(options) {
       patch(null, child, el, anchor);
     }
   };
-  const patchChildren = (n1, n2, container) => {
+  const unmountChildren = (childrens) => {
+    for (let i = 0; i < childrens.length; i++) {
+      unmount(childrens[i]);
+    }
+  };
+  const patchChildren = (n1, n2, container, anchor) => {
+    const c1 = n1.children;
+    const c2 = n2.children;
+    const prevShapFlags = n1 ? n1.shapeFlag : 0;
+    const { shapeFlag } = n2;
+    if (shapeFlag & 8 /* TEXT_CHILDREN */) {
+      if (prevShapFlags & 16 /* ARRAY_CHILDREN */) {
+        unmountChildren(c1);
+      }
+      if (c1 !== c2) {
+        hostSetElementText(container, c2);
+      }
+    } else {
+      if (prevShapFlags && 16 /* ARRAY_CHILDREN */) {
+        if (shapeFlag && 16 /* ARRAY_CHILDREN */) {
+        } else {
+          unmountChildren(c1);
+        }
+      } else {
+        if (prevShapFlags && 8 /* TEXT_CHILDREN */) {
+          hostSetElementText(container, "");
+        }
+        if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+          mountChildren(c2, container, anchor);
+        }
+      }
+    }
   };
   const mountElement = (vnode, container, anchor) => {
     let el;
@@ -89,6 +120,7 @@ function baseCreateRenderer(options) {
     const el = n2.el = n1.el;
     const oldProps = n1.props || EMPTY_OBJ;
     const newProps = n2.props || EMPTY_OBJ;
+    patchChildren(n1, n2, container, anchor);
     patchProps(el, oldProps, newProps);
   };
   const processElement = (n1, n2, container, anchor) => {
@@ -108,9 +140,17 @@ function baseCreateRenderer(options) {
       n1 = null;
     }
     const { type, shapeFlag } = n2;
-    if (shapeFlag & 1 /* ELEMENT */) {
-      processElement(n1, n2, container, anchor);
-    } else if (shapeFlag & 6 /* COMPONENT */) {
+    switch (type) {
+      case Text:
+        break;
+      case Comment:
+        break;
+      default:
+        if (shapeFlag & 1 /* ELEMENT */) {
+          processElement(n1, n2, container, anchor);
+        } else if (shapeFlag & 6 /* COMPONENT */) {
+        }
+        break;
     }
   };
   const unmount = (vnode) => {

@@ -44,19 +44,30 @@
 
 			// 5: patch props
 
-			function onDiv() {
-				console.log('onDiv');
-			}
+			// function onDiv() {
+			// 	console.log('onDiv');
+			// }
 
-			function onDiv2() {
-				console.log('onDiv2');
-			}
+			// function onDiv2() {
+			// 	console.log('onDiv2');
+			// }
 
-			let vnode = h('div', { class: 'classA', style: { color: 'blue' }, onClick: onDiv }, '显示的内容');
+			// let vnode = h('div', { class: 'classA', style: { color: 'blue' }, onClick: onDiv }, '显示的内容');
+			// render(vnode, app);
+
+			// setTimeout(() => {
+			// 	vnode = h('div', { class: 'classB', style: { color: 'red' }, onClick: onDiv2 }, '显示的内容');
+			// 	render(vnode, app);
+			// }, 1000);
+
+			// 6: patch children
+
+			// 6.1: 新值是文本，老值是数组
+			let vnode = h('div', { style: { color: 'blue' } }, h('span', '老值显示的内容'));
 			render(vnode, app);
 
 			setTimeout(() => {
-				vnode = h('div', { class: 'classB', style: { color: 'red' }, onClick: onDiv2 }, '显示的内容');
+				vnode = h('div', { style: { color: 'red' } }, '变更之后的内容');
 				render(vnode, app);
 			}, 1000);
 		</script>
