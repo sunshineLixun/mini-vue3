@@ -14,6 +14,7 @@ var isArray = Array.isArray;
 var isString = (val) => typeof val === "string";
 var isNoEmptyValue = (val) => val !== void 0 || val !== null;
 var extend = Object.assign;
+var EMPTY_OBJ = {};
 var onRE = /^on[^a-z]/;
 var isOn = (key) => onRE.test(key);
 var isReservedProp = makeMap(",key,ref");
@@ -59,7 +60,34 @@ function baseCreateRenderer(options) {
     }
     hostInsert(el, container, anchor);
   };
+  const patchProps = (el, oldProps, newProps) => {
+    if (oldProps !== newProps) {
+      if (oldProps !== EMPTY_OBJ) {
+        for (const key in oldProps) {
+          if (!isReservedProp(key) && !(key in newProps)) {
+            hostPatchProp(el, key, oldProps[key], null);
+          }
+        }
+        for (const key in newProps) {
+          if (isReservedProp(key))
+            continue;
+          const prev = oldProps[key];
+          const next = newProps[key];
+          if (prev !== next && key !== "value") {
+            hostPatchProp(el, key, prev, next);
+          }
+        }
+        if ("value" in newProps) {
+          hostPatchProp(el, "value", oldProps.value, newProps.value);
+        }
+      }
+    }
+  };
   const patchElement = (n1, n2, container, anchor) => {
+    const el = n2.el = n1.el;
+    const oldProps = n1.props || EMPTY_OBJ;
+    const newProps = n2.props || EMPTY_OBJ;
+    patchProps(el, oldProps, newProps);
   };
   const processElement = (n1, n2, container, anchor) => {
     if (n1 == null) {
@@ -80,6 +108,7 @@ function baseCreateRenderer(options) {
     const { type, shapeFlag } = n2;
     if (shapeFlag & 1 /* ELEMENT */) {
       processElement(n1, n2, container, anchor);
+    } else if (shapeFlag & 6 /* COMPONENT */) {
     }
   };
   const unmount = (vnode) => {
@@ -114,7 +143,7 @@ function baseCreateRenderer(options) {
 
 // packages/runtime-core/src/vnode.ts
 var Fragment = Symbol.for("v-fgt");
-var Text2 = Symbol.for("v-txt");
+var Text = Symbol.for("v-txt");
 var Comment = Symbol.for("v-cmt");
 var Static = Symbol.for("v-stc");
 function isVNode(value) {
@@ -127,7 +156,7 @@ var normalizeRef = ({ ref }) => {
   }
   return ref;
 };
-function createVNode2(type, props = null, children = null) {
+function createVNode(type, props = null, children = null) {
   const shapeFlag = isString(type) ? 1 /* ELEMENT */ : 0;
   return createBaseVNode(type, props, children, shapeFlag);
 }
@@ -154,13 +183,13 @@ function isSameVNodeType(n1, n2) {
 }
 function normalizeVNode(child) {
   if (child === null || typeof child === "boolean") {
-    return createVNode2(Comment);
+    return createVNode(Comment);
   } else if (isArray(child)) {
-    return createVNode2(Fragment, null, child.slice());
+    return createVNode(Fragment, null, child.slice());
   } else if (typeof child === "object") {
     return CloneVNode(child);
   } else {
-    return createVNode2(Text2, null, String(child));
+    return createVNode(Text, null, String(child));
   }
 }
 function CloneVNode(vnode) {
@@ -173,11 +202,11 @@ function h(type, propsOrChildren, children) {
   if (l === 2) {
     if (isObject(propsOrChildren) && !isArray(propsOrChildren)) {
       if (isVNode(propsOrChildren)) {
-        return createVNode2(type, null, [propsOrChildren]);
+        return createVNode(type, null, [propsOrChildren]);
       }
-      return createVNode2(type, propsOrChildren);
+      return createVNode(type, propsOrChildren);
     } else {
-      return createVNode2(type, null, propsOrChildren);
+      return createVNode(type, null, propsOrChildren);
     }
   } else {
     if (l > 3) {
@@ -185,7 +214,7 @@ function h(type, propsOrChildren, children) {
     } else if (l === 3 && isVNode(children)) {
       children = [children];
     }
-    return createVNode2(type, propsOrChildren, children);
+    return createVNode(type, propsOrChildren, children);
   }
 }
 
@@ -323,9 +352,9 @@ export {
   Comment,
   Fragment,
   Static,
-  Text2 as Text,
+  Text,
   createRenderer,
-  createVNode2 as createVNode,
+  createVNode,
   h,
   isSameVNodeType,
   isVNode,

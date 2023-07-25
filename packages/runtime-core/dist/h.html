@@ -10,29 +10,46 @@
 		<script type="module">
 			import { h, render } from './runtime-core.esm-bundler.js';
 
+			// 1：基本的渲染
+			// const vnode = h('div', '内容');
+			// render(vnode, app);
+
+			// 2: props
 			// const vnode = h('div', { style: { color: 'blue' } }, '显示的内容');
 			// render(vnode, app);
 
-			const childrens = ['span1', 'span2', 'span2'].map(item => {
-				return h(
-					'span',
-					{
-						style: {
-							display: 'flex',
-							color: 'red'
-						}
-					},
-					item
-				);
-			});
+			// 3: event
+			// function onDiv() {
+			// 	console.log('onDiv');
+			// }
+			// const vnode = h('div', { style: { color: 'blue' }, onClick: onDiv }, '显示的内容');
+			// render(vnode, app);
 
-			const vnode2 = h('div', { style: { color: 'red' } }, childrens);
+			// 4: children
+			// const childrens = ['span1', 'span2', 'span2'].map(item => {
+			// 	return h(
+			// 		'span',
+			// 		{
+			// 			style: {
+			// 				display: 'flex',
+			// 				color: 'red'
+			// 			}
+			// 		},
+			// 		item
+			// 	);
+			// });
+
+			// const vnode = h('div', { style: { color: 'red' } }, childrens);
+			// render(vnode, app);
+
+			// 5: patch props
+			let vnode = h('div', { style: { color: 'blue' } }, '显示的内容');
+			render(vnode, app);
 
 			setTimeout(() => {
-				render(h('span', '第二次span'), app);
+				vnode = h('div', { style: { color: 'red' } }, '显示的内容');
+				render(vnode, app);
 			}, 1000);
-
-			render(vnode2, app);
 		</script>
 	</body>
 </html>

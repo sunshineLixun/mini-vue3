@@ -1,13 +1,5 @@
-import {
-	Text,
-	VNode,
-	VNodeArrayChildren,
-	VNodeProps,
-	createVNode,
-	isSameVNodeType,
-	normalizeVNode
-} from '@vue/runtime-core';
-import { ShapeFlags, isReservedProp } from '@vue/shared';
+import { Data, VNode, VNodeArrayChildren, VNodeProps, isSameVNodeType, normalizeVNode } from '@vue/runtime-core';
+import { EMPTY_OBJ, ShapeFlags, isReservedProp } from '@vue/shared';
 
 export interface Renderer<HostElement = RendererElement> {
 	render: RootRenderFunction<HostElement>;
@@ -103,6 +95,8 @@ type UnmountFn = (vnode: VNode) => void;
 
 type RemoveFn = (vnode: VNode) => void;
 
+type PatchPropsFn = (el: RendererElement, oldProps: Data, newProps: Data) => void;
+
 type MountChildrenFn = (
 	children: VNodeArrayChildren,
 	container: RendererElement,
@@ -170,8 +164,51 @@ function baseCreateRenderer(options: RendererOptions) {
 		hostInsert(el, container, anchor);
 	};
 
+	// 全量diff props
+	// full diff props
+	const patchProps: PatchPropsFn = (el, oldProps, newProps) => {
+		// 不相等
+		if (oldProps !== newProps) {
+			// 老值存在
+			if (oldProps !== EMPTY_OBJ) {
+				for (const key in oldProps) {
+					// 判断是否存在vue保留的key, 在新的props中也不存在，需要保留
+					if (!isReservedProp(key) && !(key in newProps)) {
+						hostPatchProp(el, key, oldProps[key], null);
+					}
+				}
+
+				// 存在新值
+				for (const key in newProps) {
+					// 存在vue保留的key， 跳过本次循环， 把patch延迟在最后执行，提升patch效率
+					if (isReservedProp(key)) continue;
+					const prev = oldProps[key];
+					const next = newProps[key];
+					// 剔除 :value="" v-model:value=""
+					if (prev !== next && key !== 'value') {
+						hostPatchProp(el, key, prev, next);
+					}
+				}
+
+				// next: {value: ''}  old: {value: ''}
+				if ('value' in newProps) {
+					hostPatchProp(el, 'value', oldProps.value, newProps.value);
+				}
+			}
+		}
+	};
+
 	// diff
-	const patchElement: PatchElementFn = (n1, n2, container, anchor) => {};
+	const patchElement: PatchElementFn = (n1, n2, container, anchor) => {
+		// 将老的el替换成新的el
+		const el = (n2.el = n1.el);
+		const oldProps = n1.props || EMPTY_OBJ;
+		const newProps = n2.props || EMPTY_OBJ;
+
+		// TODO: 这里可以根据 编译阶段 设置 patchFlag 来判断是更新class style props、动态props
+		// 这里先全量diff props, 后续编译阶段可以结合起来 判断
+		patchProps(el, oldProps, newProps);
+	};
 
 	const processElement: ProcessElementFn = (n1, n2, container, anchor) => {
 		if (n1 == null) {
@@ -201,10 +238,12 @@ function baseCreateRenderer(options: RendererOptions) {
 		const { type, shapeFlag } = n2;
 
 		//  TODO: 判断节点类型, 有Text Comment Fragment Static
-		// 这里先处理普通元素
+		// 这里先处理普通元素 div  span ul
 		if (shapeFlag & ShapeFlags.ELEMENT) {
 			// 普通元素
 			processElement(n1, n2, container, anchor);
+		} else if (shapeFlag & ShapeFlags.COMPONENT) {
+			// 组件
 		}
 	};
 

@@ -22,10 +22,13 @@ export const isNoEmptyValue = (val: unknown) => val !== undefined || val !== nul
 
 export const extend = Object.assign;
 
+export const EMPTY_OBJ: { readonly [key: string]: any } = {};
+
 // 事件 onXxxx 或者也可以这么写： /^on[A-Z]/
 export const onRE = /^on[^a-z]/;
 
 export const isOn = (key: string) => onRE.test(key);
 
-// 下面这些key是vue内部保留的关键字，元素自定义属性props一般不允许用下面的key
+// 下面这些key是vue内部保留的关键字，元素自定义属性props一般不允许用下面的key, 空字符串也算
+// ["", "key", "ref"]
 export const isReservedProp = makeMap(',key,ref');
