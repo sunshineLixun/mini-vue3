@@ -24,3 +24,23 @@
 - [x] toRaw
 - [x] ref 的实现
 - [x] effectScope 的实现
+
+
+## runtime-core
+
+- [x] h函数实现
+- [x] renderer函数实现
+- [x] 初次挂载element实现
+- [x] patchElement
+- [ ] diff
+
+## runtime-dom
+
+- [x] dom操作实现
+- [x] event
+- [x] class
+- [x] style
+- [x] props
+
+
+## 接入 vitest
