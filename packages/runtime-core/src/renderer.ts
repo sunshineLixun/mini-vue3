@@ -98,7 +98,7 @@ type ProcessElementFn = (n1: VNode | null, n2: VNode, container: RendererElement
 
 type MountElementFn = (vnode: VNode, container: RendererElement, anchor: RendererNode | null) => void;
 
-type PatchElementFn = (n1: VNode | null, n2: VNode, container: RendererElement, anchor: RendererNode | null) => void;
+type PatchElementFn = (n1: VNode | null, n2: VNode) => void;
 
 type UnmountFn = (vnode: VNode) => void;
 
@@ -288,14 +288,14 @@ function baseCreateRenderer(options: RendererOptions) {
 	};
 
 	// diff
-	const patchElement: PatchElementFn = (n1, n2, container, anchor) => {
+	const patchElement: PatchElementFn = (n1, n2) => {
 		// 将老的el替换成新的el
 		const el = (n2.el = n1.el);
 		const oldProps = n1.props || EMPTY_OBJ;
 		const newProps = n2.props || EMPTY_OBJ;
 
 		// 1: children
-		patchChildren(n1, n2, container, anchor);
+		patchChildren(n1, n2, el, null);
 
 		// 2: props
 		// TODO: 这里可以根据 编译阶段 设置 patchFlag 来判断是更新class style props、动态props
@@ -309,7 +309,7 @@ function baseCreateRenderer(options: RendererOptions) {
 			mountElement(n2, container, anchor);
 		} else {
 			// diff
-			patchElement(n1, n2, container, anchor);
+			patchElement(n1, n2);
 		}
 	};
 

@@ -63,11 +63,11 @@
 			// 6: patch children
 
 			// 6.1: 新值是文本，老值是数组
-			let vnode = h('div', { style: { color: 'blue' } }, '老值显示的内容');
+			let vnode = h('div', { style: { color: 'blue' } }, h('div', '变更之后的内容'));
 			render(vnode, app);
 
 			setTimeout(() => {
-				const vnode = h('div', { style: { color: 'red' } }, h('div', '变更之后的内容'));
+				const vnode = h('div', { style: { color: 'red' } }, '老值显示的内容');
 				render(vnode, app);
 			}, 1000);
 		</script>

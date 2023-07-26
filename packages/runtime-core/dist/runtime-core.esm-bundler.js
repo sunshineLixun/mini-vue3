@@ -116,18 +116,18 @@ function baseCreateRenderer(options) {
       }
     }
   };
-  const patchElement = (n1, n2, container, anchor) => {
+  const patchElement = (n1, n2) => {
     const el = n2.el = n1.el;
     const oldProps = n1.props || EMPTY_OBJ;
     const newProps = n2.props || EMPTY_OBJ;
-    patchChildren(n1, n2, container, anchor);
+    patchChildren(n1, n2, el, null);
     patchProps(el, oldProps, newProps);
   };
   const processElement = (n1, n2, container, anchor) => {
     if (n1 == null) {
       mountElement(n2, container, anchor);
     } else {
-      patchElement(n1, n2, container, anchor);
+      patchElement(n1, n2);
     }
   };
   const patch = (n1, n2, container, anchor) => {
