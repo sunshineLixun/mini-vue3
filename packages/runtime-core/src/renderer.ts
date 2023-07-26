@@ -172,10 +172,10 @@ function baseCreateRenderer(options: RendererOptions) {
 	const patchChildren: PatchChildrenFn = (n1, n2, container, anchor) => {
 		// 老的子元素
 		const c1 = n1.children;
+		const prevShapFlags = n1 ? n1.shapeFlag : 0;
+
 		// 新的子元素
 		const c2 = n2.children;
-
-		const prevShapFlags = n1 ? n1.shapeFlag : 0;
 
 		const { shapeFlag } = n2;
 
@@ -193,8 +193,8 @@ function baseCreateRenderer(options: RendererOptions) {
 			}
 		} else {
 			// 对应后面几种情况: 新值是： 数组， 空
-			if (prevShapFlags && ShapeFlags.ARRAY_CHILDREN) {
-				if (shapeFlag && ShapeFlags.ARRAY_CHILDREN) {
+			if (prevShapFlags & ShapeFlags.ARRAY_CHILDREN) {
+				if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
 					// 新老值 都是 数组 -> 对应第4种情况
 					// 重点： 全量 diff
 					// 这里是情况最复杂的，也是最喜欢问考点的：
@@ -209,7 +209,7 @@ function baseCreateRenderer(options: RendererOptions) {
 				// 或者旧值是文本（对应的新值文本或者是数组）-> 卸载 旧的文本内容，挂载新的元素
 
 				// 卸载旧的文本内容
-				if (prevShapFlags && ShapeFlags.TEXT_CHILDREN) {
+				if (prevShapFlags & ShapeFlags.TEXT_CHILDREN) {
 					// 设置空数据就行
 					hostSetElementText(container, '');
 				}

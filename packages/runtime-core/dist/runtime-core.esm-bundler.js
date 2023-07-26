@@ -49,8 +49,8 @@ function baseCreateRenderer(options) {
   };
   const patchChildren = (n1, n2, container, anchor) => {
     const c1 = n1.children;
-    const c2 = n2.children;
     const prevShapFlags = n1 ? n1.shapeFlag : 0;
+    const c2 = n2.children;
     const { shapeFlag } = n2;
     if (shapeFlag & 8 /* TEXT_CHILDREN */) {
       if (prevShapFlags & 16 /* ARRAY_CHILDREN */) {
@@ -60,13 +60,13 @@ function baseCreateRenderer(options) {
         hostSetElementText(container, c2);
       }
     } else {
-      if (prevShapFlags && 16 /* ARRAY_CHILDREN */) {
-        if (shapeFlag && 16 /* ARRAY_CHILDREN */) {
+      if (prevShapFlags & 16 /* ARRAY_CHILDREN */) {
+        if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
         } else {
           unmountChildren(c1);
         }
       } else {
-        if (prevShapFlags && 8 /* TEXT_CHILDREN */) {
+        if (prevShapFlags & 8 /* TEXT_CHILDREN */) {
           hostSetElementText(container, "");
         }
         if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
@@ -316,7 +316,7 @@ function patchStyle(el, prev, next) {
   if (next && !isCssString) {
     if (prev && !isPrevCssString) {
       for (const key in prev) {
-        if (!isNoEmptyValue(next[key])) {
+        if (next[key] == null) {
           style[key] = "";
         }
       }

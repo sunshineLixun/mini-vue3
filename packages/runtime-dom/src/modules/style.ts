@@ -1,4 +1,4 @@
-import { isNoEmptyValue, isString } from '@vue/shared';
+import { isString } from '@vue/shared';
 
 type Style = string | Record<string, string | string[]> | null;
 
@@ -14,8 +14,8 @@ export function patchStyle(el: Element, prev: Style, next: Style) {
 		if (prev && !isPrevCssString) {
 			// 说明老值 和新值都是对象
 			for (const key in prev) {
-				// 老值 在新的值里面没有，删除
-				if (!isNoEmptyValue(next[key])) {
+				// 老值 在新的值里面没有，删除老值
+				if (next[key] == null) {
 					style[key] = '';
 				}
 			}

@@ -8,7 +8,7 @@
 	<body>
 		<div id="app"></div>
 		<script type="module">
-			import { h, render } from './runtime-core.esm-bundler.js';
+			import { h, render, createVNode } from './runtime-core.esm-bundler.js';
 
 			// 1：基本的渲染
 			// const vnode = h('div', '内容');
@@ -63,11 +63,11 @@
 			// 6: patch children
 
 			// 6.1: 新值是文本，老值是数组
-			let vnode = h('div', { style: { color: 'blue' } }, h('span', '老值显示的内容'));
+			let vnode = h('div', { style: { color: 'blue' } }, '老值显示的内容');
 			render(vnode, app);
 
 			setTimeout(() => {
-				vnode = h('div', { style: { color: 'red' } }, '变更之后的内容');
+				const vnode = h('div', { style: { color: 'red' } }, h('div', '变更之后的内容'));
 				render(vnode, app);
 			}, 1000);
 		</script>
