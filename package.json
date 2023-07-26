@@ -8,6 +8,7 @@
     "dev:shared": "node scripts/dev.js shared -f esm-bundler",
     "dev:runtime-core": "node scripts/dev.js runtime-core -f esm-bundler",
     "dev:runtime-dom": "node scripts/dev.js runtime-dom -f esm-bundler",
+    "dev:compiler-core": "node scripts/dev.js compiler-core -f esm-bundler",
     "test": "vitest"
   },
   "type": "module",

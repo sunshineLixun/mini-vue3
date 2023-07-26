@@ -1,0 +1,12 @@
+{
+  "name": "@vue/compiler-core",
+  "version": "1.0.0",
+  "module": "dist/compiler-core.esm-bundler.js",
+  "buildOptions": {
+    "name": "VueCompilerCore",
+    "formats": [
+      "esm-bundler",
+      "cjs"
+    ]
+  }
+}
