@@ -3,7 +3,7 @@
 
 export const enum NodeTypes {
 	ROOT,
-	// 元素
+	// 普通元素
 	ELEMENT,
 	//文本
 	TEXT,
@@ -61,13 +61,31 @@ export interface Node {
 }
 
 export interface BaseElementNode extends Node {
-	// div  span  br  ul
+	// 标签： div  span  br  ul
 	tag: string;
+
+	tagType: ElementTypes;
+
+	children: TemplateChildNode[];
+}
+
+export const enum ElementTypes {
+	// 普通文本
+	ELEMENT,
+	// 组件
+	COMPONENT,
+	SLOT,
+	TEMPLATE
 }
 
 export type ElementNode = BaseElementNode;
 
-export type TemplateChildNode = ElementNode;
+export type TemplateChildNode = ElementNode | TextNode;
+
+export interface TextNode extends Node {
+	type: NodeTypes.TEXT;
+	content: string;
+}
 
 export interface Position {
 	// 文本偏移量

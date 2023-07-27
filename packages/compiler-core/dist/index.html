@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Document</title>
+	</head>
+	<body>
+		<script type="module">
+			import { baseParse } from './compiler-core.esm-bundler.js';
+
+			// 1:
+			// const ast = baseParse('some text');
+			// console.log(ast);
+
+			// 2:
+			// const ast = baseParse('some text</div>');
+			// console.log(ast);
+
+			// 3:
+			const ast = baseParse('<div><span>some text</span>');
+			console.log(ast);
+		</script>
+	</body>
+</html>
