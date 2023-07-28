@@ -107,6 +107,7 @@ function parseChildren(context, mode, ancestors) {
     debugger;
     let node = void 0;
     if (startsWith(s, context.options.delimiters[0])) {
+      node = parseInterpolation(context);
     } else if (s[0] === "<") {
       if (s.length === 1) {
         throw new SyntaxError("\u8BED\u6CD5\u9519\u8BEF");
@@ -129,6 +130,38 @@ function parseChildren(context, mode, ancestors) {
     nodes.push(node);
   }
   return nodes;
+}
+function parseInterpolation(context) {
+  const [open, close] = context.options.delimiters;
+  const closeIndex = context.source.indexOf(close, open.length);
+  if (closeIndex === -1) {
+    return void 0;
+  }
+  const start = getCursor(context);
+  advanceBy(context, open.length);
+  const innerStart = getCursor(context);
+  const innerEnd = getCursor(context);
+  const rawContentLength = closeIndex - open.length;
+  const rawContent = context.source.slice(0, rawContentLength);
+  const preTrimContent = parseTextData(context, rawContentLength);
+  const content = preTrimContent.trim();
+  const startOffset = preTrimContent.indexOf(content);
+  if (startOffset > 0) {
+    advancePositionWithMutation(innerStart, rawContent, startOffset);
+  }
+  const endOffset = rawContentLength - (preTrimContent.length - content.length - startOffset);
+  advancePositionWithMutation(innerEnd, rawContent, endOffset);
+  advanceBy(context, close.length);
+  return {
+    type: 5 /* INTERPOLATION */,
+    content: {
+      type: 4 /* SIMPLE_EXPRESSION */,
+      isStatic: false,
+      content,
+      loc: getSelection(context, innerStart, innerEnd)
+    },
+    loc: getSelection(context, start)
+  };
 }
 function parseText(context, mode) {
   const endTokens = ["<", context.options.delimiters[0]];

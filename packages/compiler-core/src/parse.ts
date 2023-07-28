@@ -2,6 +2,7 @@ import { NO, extend } from '@vue/shared';
 import {
 	ElementNode,
 	ElementTypes,
+	InterpolationNode,
 	NodeTypes,
 	Position,
 	SourceLocation,
@@ -62,7 +63,7 @@ function parseChildren(context: ParserContext, mode: TextModes, ancestors: Eleme
 		let node: TemplateChildNode | undefined = undefined;
 		if (startsWith(s, context.options.delimiters[0])) {
 			// "{{" 找到插值
-			// TODO:
+			node = parseInterpolation(context);
 		} else if (s[0] === '<') {
 			// 匹配标签< 开头
 			if (s.length === 1) {
@@ -97,6 +98,60 @@ function parseChildren(context: ParserContext, mode: TextModes, ancestors: Eleme
 	}
 
 	return nodes;
+}
+
+function parseInterpolation(context: ParserContext): InterpolationNode | undefined {
+	const [open, close] = context.options.delimiters;
+
+	// {{ name }}  获取 }} 标签的起始位置，eg. 在这里就是 closeIndex = 8
+	const closeIndex = context.source.indexOf(close, open.length);
+	if (closeIndex === -1) {
+		return undefined;
+	}
+
+	const start = getCursor(context);
+
+	// 光标前进2位， 去掉 {{
+	advanceBy(context, open.length);
+
+	const innerStart = getCursor(context);
+	const innerEnd = getCursor(context);
+
+	// 真正的内容是 closeIndex - open.length 取中间的内容
+	// 这里的rawContentLegth = 8 - 2 = 6 （算上空格）
+	const rawContentLength = closeIndex - open.length;
+
+	// 包含空格的内容 " name "
+	const rawContent = context.source.slice(0, rawContentLength);
+
+	// 解析文本内容，光标前进到 }} 符号前面，此时context.source的内容只剩 }}
+	const preTrimContent = parseTextData(context, rawContentLength);
+
+	// 去掉两边的空格 此时 content = name
+	const content = preTrimContent.trim();
+
+	const startOffset = preTrimContent.indexOf(content);
+
+	if (startOffset > 0) {
+		advancePositionWithMutation(innerStart, rawContent, startOffset);
+	}
+
+	const endOffset = rawContentLength - (preTrimContent.length - content.length - startOffset);
+	advancePositionWithMutation(innerEnd, rawContent, endOffset);
+
+	// 去掉最后的 }}
+	advanceBy(context, close.length);
+
+	return {
+		type: NodeTypes.INTERPOLATION,
+		content: {
+			type: NodeTypes.SIMPLE_EXPRESSION,
+			isStatic: false,
+			content,
+			loc: getSelection(context, innerStart, innerEnd)
+		},
+		loc: getSelection(context, start)
+	};
 }
 
 function parseText(context: ParserContext, mode: TextModes): TextNode {

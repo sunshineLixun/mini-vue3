@@ -83,7 +83,7 @@ export const enum ElementTypes {
 
 export type ElementNode = BaseElementNode;
 
-export type TemplateChildNode = ElementNode | TextNode;
+export type TemplateChildNode = ElementNode | TextNode | InterpolationNode;
 
 export interface TextNode extends Node {
 	type: NodeTypes.TEXT;
@@ -101,6 +101,11 @@ export interface RootNode extends Node {
 	cached: number;
 	temps: number;
 	codegenNode: TemplateChildNode;
+}
+
+export interface InterpolationNode extends Node {
+	type: NodeTypes.INTERPOLATION;
+	content: any;
 }
 
 export interface Position {
