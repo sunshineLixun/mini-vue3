@@ -8,6 +8,8 @@ export const isFunction = (val: unknown): val is Function => typeof val === 'fun
 
 export const NOOP = () => {};
 
+export const NO = () => false;
+
 export const isArray = Array.isArray;
 export const isMap = (val: unknown): val is Map<any, any> => toTypeString(val) === '[object Map]';
 export const isSet = (val: unknown): val is Set<any> => toTypeString(val) === '[object Set]';

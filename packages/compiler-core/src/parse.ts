@@ -1,4 +1,4 @@
-import { extend } from '@vue/shared';
+import { NO, extend } from '@vue/shared';
 import {
 	ElementNode,
 	ElementTypes,
@@ -13,6 +13,9 @@ import { advancePositionWithMutation } from './utils';
 
 export interface ParserOptions {
 	delimiters?: [string, string];
+
+	// 定义校验tag是否合法
+	isVoidTag?: (tag: string) => boolean;
 }
 
 export const enum TextModes {
@@ -27,7 +30,9 @@ const enum TagType {
 
 const defaultParserOptions: ParserOptions = {
 	// 动态插值
-	delimiters: [`{{`, `}}`]
+	delimiters: [`{{`, `}}`],
+
+	isVoidTag: NO
 };
 
 export interface ParserContext {
@@ -79,7 +84,7 @@ function parseChildren(context: ParserContext, mode: TextModes, ancestors: Eleme
 				}
 			} else if (/[a-z]/i.test(s[1])) {
 				// <div></div>
-				parseElement(context, ancestors);
+				node = parseElement(context, ancestors);
 			}
 		}
 
@@ -126,8 +131,14 @@ function parseTextData(context: ParserContext, length: number) {
 }
 
 function parseElement(context: ParserContext, ancestors: ElementNode[]): ElementNode {
-	// 开始标签 <div
+	// 解析开始标签 <div
 	const element = parseTag(context, TagType.Start);
+
+	// 如果是自闭合标签，或 满足自定义标签校验规则 返回本身
+	// eg.  <div/> <img> <br>
+	if (element.isSelfClosing || context.options.isVoidTag(element.tag)) {
+		return element;
+	}
 
 	// 把开始标签都存在队列中
 	ancestors.push(element);
@@ -139,6 +150,7 @@ function parseElement(context: ParserContext, ancestors: ElementNode[]): Element
 	ancestors.pop();
 
 	// 结束标签 </div>
+	// 开始标签和结束标签是不是配对
 	if (startsWithEndTagOpen(context.source, element.tag)) {
 		// 解析结束标签
 		parseTag(context, TagType.End);
@@ -168,24 +180,25 @@ function parseTag(context: ParserContext, type: TagType): ElementNode {
 	// 移动截取位置到最后
 	advanceBy(context, match[0].length);
 
-	// 闭合标签>
+	// 闭合标签 />
 	let isSelfClosing = false;
 
-	// <div>
-	if (startsWith(context.source, '>')) {
+	// <div />
+	if (startsWith(context.source, '/>')) {
 		isSelfClosing = true;
 	}
 
-	// 在外后进一个光标 到 > 后面
+	// 如果是自闭和标签 光标移动到 /> 后面，如果不是移动到 > 后面
 	advanceBy(context, isSelfClosing ? 2 : 1);
 
-	// 如果是end 光标进到>后面，表示解析完成
+	// 明确表示闭合标签 返回
 	if (type === TagType.End) return;
 
 	return {
 		// 标识整个节点的类型
 		type: NodeTypes.ELEMENT,
 		tag,
+		isSelfClosing,
 		loc: getSelection(context, start),
 		children: [],
 		// tag的类型
@@ -198,6 +211,7 @@ function createParserContext(content: string, rawOptions: ParserOptions): Parser
 
 	let key: keyof ParserOptions;
 	for (key in rawOptions) {
+		// @ts-ignore
 		options[key] = rawOptions[key] === undefined ? defaultParserOptions[key] : rawOptions[key];
 	}
 

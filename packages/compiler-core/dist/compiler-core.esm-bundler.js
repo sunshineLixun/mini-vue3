@@ -9,6 +9,7 @@ function makeMap(str) {
 }
 
 // packages/shared/src/general.ts
+var NO = () => false;
 var isArray = Array.isArray;
 var extend = Object.assign;
 var isReservedProp = makeMap(",key,ref");
@@ -89,7 +90,8 @@ var TextModes = /* @__PURE__ */ ((TextModes2) => {
 })(TextModes || {});
 var defaultParserOptions = {
   // 动态插值
-  delimiters: [`{{`, `}}`]
+  delimiters: [`{{`, `}}`],
+  isVoidTag: NO
 };
 function baseParse(content, options = {}) {
   const context = createParserContext(content, options);
@@ -118,7 +120,7 @@ function parseChildren(context, mode, ancestors) {
           parseTag(context, 1 /* End */);
         }
       } else if (/[a-z]/i.test(s[1])) {
-        parseElement(context, ancestors);
+        node = parseElement(context, ancestors);
       }
     }
     if (!node) {
@@ -152,6 +154,9 @@ function parseTextData(context, length) {
 }
 function parseElement(context, ancestors) {
   const element = parseTag(context, 0 /* Start */);
+  if (element.isSelfClosing || context.options.isVoidTag(element.tag)) {
+    return element;
+  }
   ancestors.push(element);
   const children = parseChildren(context, 0 /* DATA */, ancestors);
   ancestors.pop();
@@ -170,7 +175,7 @@ function parseTag(context, type) {
   const tag = match[1];
   advanceBy(context, match[0].length);
   let isSelfClosing = false;
-  if (startsWith(context.source, ">")) {
+  if (startsWith(context.source, "/>")) {
     isSelfClosing = true;
   }
   advanceBy(context, isSelfClosing ? 2 : 1);
@@ -180,6 +185,7 @@ function parseTag(context, type) {
     // 标识整个节点的类型
     type: 1 /* ELEMENT */,
     tag,
+    isSelfClosing,
     loc: getSelection(context, start),
     children: [],
     // tag的类型

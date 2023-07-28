@@ -67,6 +67,9 @@ export interface BaseElementNode extends Node {
 	tagType: ElementTypes;
 
 	children: TemplateChildNode[];
+
+	// 是否是闭合标签
+	isSelfClosing: boolean;
 }
 
 export const enum ElementTypes {
@@ -85,6 +88,19 @@ export type TemplateChildNode = ElementNode | TextNode;
 export interface TextNode extends Node {
 	type: NodeTypes.TEXT;
 	content: string;
+}
+
+export interface RootNode extends Node {
+	type: NodeTypes;
+	children: TemplateChildNode[];
+	helpers: Set<symbol>;
+	components: string[];
+	directives: string[];
+	hoists: [];
+	imports: [];
+	cached: number;
+	temps: number;
+	codegenNode: TemplateChildNode;
 }
 
 export interface Position {
@@ -116,7 +132,7 @@ export const locStub: SourceLocation = {
 	end: { line: 1, column: 1, offset: 0 }
 };
 
-export function createRoot(children: any[], loc = locStub) {
+export function createRoot(children: TemplateChildNode[], loc = locStub): RootNode {
 	return {
 		type: NodeTypes.ROOT,
 		children,

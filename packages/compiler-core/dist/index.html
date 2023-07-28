@@ -18,8 +18,23 @@
 			// console.log(ast);
 
 			// 3:
-			const ast = baseParse('<div><span>some text</span>');
-			console.log(ast);
+			// const ast = baseParse('<div><span>some text</span>');
+			// console.log(ast);
+
+			// 4:
+			// const ast = baseParse('<div>hello</div>');
+			// const element = ast.children[0];
+			// console.log(element);
+
+			// 5:
+			// const ast = baseParse('<div></div>');
+			// const element = ast.children[0];
+			// console.log(element);
+
+			// 6:
+			const ast = baseParse('<div/>hello');
+			const element = ast.children[0];
+			console.log(element);
 		</script>
 	</body>
 </html>
