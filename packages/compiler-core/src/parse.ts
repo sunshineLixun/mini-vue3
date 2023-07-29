@@ -59,7 +59,6 @@ function parseChildren(context: ParserContext, mode: TextModes, ancestors: Eleme
 	// 直到找到标签结束为止
 	while (!isEnd(context, mode, ancestors)) {
 		const s = context.source;
-		debugger;
 		let node: TemplateChildNode | undefined = undefined;
 		if (startsWith(s, context.options.delimiters[0])) {
 			// "{{" 找到插值

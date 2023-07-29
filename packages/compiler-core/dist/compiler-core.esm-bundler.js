@@ -104,7 +104,6 @@ function parseChildren(context, mode, ancestors) {
   const nodes = [];
   while (!isEnd(context, mode, ancestors)) {
     const s = context.source;
-    debugger;
     let node = void 0;
     if (startsWith(s, context.options.delimiters[0])) {
       node = parseInterpolation(context);

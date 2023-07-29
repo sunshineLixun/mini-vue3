@@ -20,6 +20,61 @@ describe('compiler: parse', () => {
 			});
 		});
 
+		test('interpolation', () => {
+			const ast = baseParse('some {{ message }} text');
+
+			const text1 = ast.children[0] as TextNode;
+			const text2 = ast.children[1] as TextNode;
+			const text3 = ast.children[2] as TextNode;
+
+			console.log(text2);
+
+			expect(text1).toStrictEqual({
+				type: NodeTypes.TEXT,
+				loc: {
+					start: { column: 1, line: 1, offset: 0 },
+					end: { column: 6, line: 1, offset: 5 },
+					source: 'some '
+				},
+				content: 'some '
+			});
+
+			expect(text1).toStrictEqual({
+				type: NodeTypes.TEXT,
+				loc: {
+					start: { column: 1, line: 1, offset: 0 },
+					end: { column: 6, line: 1, offset: 5 },
+					source: 'some '
+				},
+				content: 'some '
+			});
+
+			expect(text2).toStrictEqual({
+				type: NodeTypes.INTERPOLATION,
+				loc: {
+					start: { column: 6, line: 1, offset: 5 },
+					end: { column: 19, line: 1, offset: 18 },
+					source: '{{ message }}'
+				},
+				content: {
+					type: NodeTypes.SIMPLE_EXPRESSION,
+					isStatic: false,
+					content: 'message',
+					loc: { start: { column: 9, line: 1, offset: 8 }, end: { column: 16, line: 1, offset: 15 }, source: 'message' }
+				}
+			});
+
+			expect(text3).toStrictEqual({
+				type: NodeTypes.TEXT,
+				loc: {
+					start: { column: 19, line: 1, offset: 18 },
+					end: { column: 24, line: 1, offset: 23 },
+					source: ' text'
+				},
+				content: ' text'
+			});
+		});
+
 		test('simple text with invalid end tag', () => {
 			const ast = baseParse('some text</div>');
 			const text = ast.children[0] as TextNode;
@@ -133,8 +188,6 @@ describe('compiler: parse', () => {
 				}
 			});
 			const element = ast.children[0] as ElementNode;
-
-			console.log(element);
 
 			expect(element).toStrictEqual({
 				type: NodeTypes.ELEMENT,

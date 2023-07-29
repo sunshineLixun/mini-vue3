@@ -32,9 +32,13 @@
 			// console.log(element);
 
 			// 6:
-			const ast = baseParse('<div/>hello');
-			const element = ast.children[0];
-			console.log(element);
+			// const ast = baseParse('<div/>hello');
+			// const element = ast.children[0];
+			// console.log(element);
+
+			// 7: 插值
+			const ast = baseParse('some {{ message }} text');
+			console.log(ast);
 		</script>
 	</body>
 </html>

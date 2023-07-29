@@ -103,9 +103,16 @@ export interface RootNode extends Node {
 	codegenNode: TemplateChildNode;
 }
 
+export interface SimpleExpressionNode extends Node {
+	type: NodeTypes.SIMPLE_EXPRESSION;
+	content: string;
+	/**是否是静态节点 */
+	isStatic: boolean;
+}
+
 export interface InterpolationNode extends Node {
 	type: NodeTypes.INTERPOLATION;
-	content: any;
+	content: SimpleExpressionNode;
 }
 
 export interface Position {
