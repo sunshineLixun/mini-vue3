@@ -206,6 +206,8 @@ function parseTag(context, type) {
   const match = /^<\/?([a-z][^\s />]*)/i.exec(context.source);
   const tag = match[1];
   advanceBy(context, match[0].length);
+  advanceSpaces(context);
+  const props = parseAttributes(context, type);
   let isSelfClosing = false;
   if (startsWith(context.source, "/>")) {
     isSelfClosing = true;
@@ -220,6 +222,7 @@ function parseTag(context, type) {
     isSelfClosing,
     loc: getSelection(context, start),
     children: [],
+    props,
     // tag的类型
     tagType: 0 /* ELEMENT */
   };
@@ -241,6 +244,76 @@ function createParserContext(content, rawOptions) {
     // 源数据
     originalSource: content,
     source: content
+  };
+}
+function parseAttributes(context, type) {
+  const props = [];
+  const attributeNames = /* @__PURE__ */ new Set();
+  while (context.source.length > 0 && !startsWith(context.source, ">") && !startsWith(context.source, "/>")) {
+    if (type === 1 /* End */) {
+      new SyntaxError("\u4E0D\u80FD\u4ECE\u540E\u5F80\u524D\u904D\u5386\u5C5E\u6027");
+    }
+    const attr = parseAttribute(context, attributeNames);
+    if (attr.type === 6 /* ATTRIBUTE */ && attr.value && attr.name === "class") {
+      attr.value.content = attr.value.content.replace(/\s+/g, " ").trim();
+    }
+    if (type === 0 /* Start */) {
+      props.push(attr);
+    }
+  }
+  return props;
+}
+function parseAttribute(context, nameSet) {
+  const start = getCursor(context);
+  const match = /^[^\t\r\n\f />][^\t\r\n\f />=]*/.exec(context.source);
+  const name = match[0];
+  if (!nameSet.has(name)) {
+    nameSet.add(name);
+  }
+  advanceBy(context, name.length);
+  let value = void 0;
+  if (/^[\t\r\n\f ]*=/.test(context.source)) {
+    advanceSpaces(context);
+    advanceBy(context, 1);
+    advanceSpaces(context);
+    value = parseAttributeValue(context);
+  }
+  return {
+    type: 6 /* ATTRIBUTE */,
+    name,
+    value: value && {
+      type: 2 /* TEXT */,
+      content: value.content,
+      loc: value.loc
+    },
+    loc: getSelection(context, start)
+  };
+}
+function parseAttributeValue(context) {
+  const start = getCursor(context);
+  let content;
+  const quote = context.source[0];
+  const isQuoted = quote === `"` || quote === `'`;
+  if (isQuoted) {
+    advanceBy(context, 1);
+    const endIndex = context.source.indexOf(quote);
+    if (endIndex === -1) {
+      content = parseTextData(context, context.source.length);
+    } else {
+      content = parseTextData(context, endIndex);
+      advanceBy(context, 1);
+    }
+  } else {
+    const match = /^[^\t\r\n\f >]+/.exec(context.source);
+    if (!match) {
+      return void 0;
+    }
+    content = parseTextData(context, match[0].length);
+  }
+  return {
+    content,
+    loc: getSelection(context, start),
+    isQuoted
   };
 }
 function getCursor(context) {
@@ -282,6 +355,12 @@ function startsWithEndTagOpen(source, tag) {
 function advanceBy(context, numberOfCharacters) {
   advancePositionWithMutation(context, context.source, numberOfCharacters);
   context.source = context.source.slice(numberOfCharacters);
+}
+function advanceSpaces(context) {
+  const match = /^[\S ]+/.exec(context.source);
+  if (match) {
+    advanceBy(context, match[0].length);
+  }
 }
 export {
   ElementTypes,

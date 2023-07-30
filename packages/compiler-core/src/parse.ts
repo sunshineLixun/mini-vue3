@@ -12,6 +12,14 @@ import {
 } from './ast';
 import { advancePositionWithMutation } from './utils';
 
+type AttributeValue =
+	| {
+			content: string;
+			isQuoted: boolean;
+			loc: SourceLocation;
+	  }
+	| undefined;
+
 export interface ParserOptions {
 	delimiters?: [string, string];
 
@@ -225,6 +233,8 @@ function parseElement(context: ParserContext, ancestors: ElementNode[]): Element
 function parseTag(context: ParserContext, type: TagType): ElementNode {
 	const start = getCursor(context);
 
+	//  eg. <div name='js'></div>
+
 	const match = /^<\/?([a-z][^\s />]*)/i.exec(context.source)!;
 
 	// div
@@ -233,6 +243,11 @@ function parseTag(context: ParserContext, type: TagType): ElementNode {
 	// </div
 	// 移动截取位置到最后
 	advanceBy(context, match[0].length);
+
+	// 删掉空格, 为了后面解析props做准备
+	advanceSpaces(context);
+
+	const props = parseAttributes(context, type);
 
 	// 闭合标签 />
 	let isSelfClosing = false;
@@ -255,6 +270,7 @@ function parseTag(context: ParserContext, type: TagType): ElementNode {
 		isSelfClosing,
 		loc: getSelection(context, start),
 		children: [],
+		props,
 		// tag的类型
 		tagType: ElementTypes.ELEMENT
 	};
@@ -280,6 +296,131 @@ function createParserContext(content: string, rawOptions: ParserOptions): Parser
 		// 源数据
 		originalSource: content,
 		source: content
+	};
+}
+
+function parseAttributes(context: ParserContext, type: TagType) {
+	const props = [];
+	const attributeNames = new Set<string>();
+
+	// 知道匹配到 标签是闭合的位置: > 或者 />，表示匹配完成
+	while (context.source.length > 0 && !startsWith(context.source, '>') && !startsWith(context.source, '/>')) {
+		if (type === TagType.End) {
+			new SyntaxError('不能从后往前遍历属性');
+		}
+
+		const attr = parseAttribute(context, attributeNames);
+
+		if (attr.type === NodeTypes.ATTRIBUTE && attr.value && attr.name === 'class') {
+			// eg. class =
+			// "a
+			// b
+			// c"
+			// class有独立换行的情况，替换掉\n 为空格，然后清空前后的空格
+			attr.value.content = attr.value.content.replace(/\s+/g, ' ').trim();
+		}
+
+		if (type === TagType.Start) {
+			props.push(attr);
+		}
+	}
+
+	return props;
+}
+
+function parseAttribute(context: ParserContext, nameSet: Set<string>) {
+	// 1： 解析名称
+	// 2： 解析名称对应的value
+
+	// 中间会有很多异常情况，比如没有属性名称，属性名称有特殊符号等等， 暂不考虑处理
+
+	const start = getCursor(context);
+
+	// eg. id='js'></div>
+	// eg. id='js' />
+	// props前面不能有空
+	const match = /^[^\t\r\n\f />][^\t\r\n\f />=]*/.exec(context.source)!;
+
+	// id
+	const name = match[0];
+
+	if (!nameSet.has(name)) {
+		nameSet.add(name);
+	}
+
+	advanceBy(context, name.length);
+
+	// 这时候source: ='js' />
+
+	// 解析value
+	let value: AttributeValue = undefined;
+
+	// 匹配=
+	//  =前后都有可能有 空格
+	// eg. id  =    'js' />
+	if (/^[\t\r\n\f ]*=/.test(context.source)) {
+		// 清空=前面空格的情况
+		advanceSpaces(context);
+		// 前进一位 删掉=
+		advanceBy(context, 1);
+		// 清空=后面空格的情况
+		advanceSpaces(context);
+
+		// 解析value
+		value = parseAttributeValue(context);
+	}
+
+	return {
+		type: NodeTypes.ATTRIBUTE,
+		name,
+		value: value && {
+			type: NodeTypes.TEXT,
+			content: value.content,
+			loc: value.loc
+		},
+		loc: getSelection(context, start)
+	};
+}
+
+function parseAttributeValue(context: ParserContext): AttributeValue {
+	const start = getCursor(context);
+	let content: string;
+
+	// value有'' ""
+	const quote = context.source[0];
+	const isQuoted = quote === `"` || quote === `'`;
+	// 如果有引号
+	if (isQuoted) {
+		// 删掉第一个引号
+		advanceBy(context, 1);
+		// 获取最后一个引号的位置
+		const endIndex = context.source.indexOf(quote);
+		// 没找到
+		if (endIndex === -1) {
+			// eg. id=js
+			content = parseTextData(context, context.source.length);
+		} else {
+			content = parseTextData(context, endIndex);
+			// 删掉最后一个引号
+			advanceBy(context, 1);
+		}
+	} else {
+		// 没有引号
+
+		// 匹配value前面没有空白符的数据
+		const match = /^[^\t\r\n\f >]+/.exec(context.source);
+		if (!match) {
+			// eg. id=
+			return undefined;
+		}
+
+		content = parseTextData(context, match[0].length);
+	}
+
+	return {
+		content,
+		loc: getSelection(context, start),
+		isQuoted
 	};
 }
 
@@ -341,4 +482,13 @@ function advanceBy(context: ParserContext, numberOfCharacters: number) {
 	// 这个地方是唯一修改source的地方
 	// 移动光标，截取后numberOfCharacters个字符
 	context.source = context.source.slice(numberOfCharacters);
+}
+
+function advanceSpaces(context: ParserContext) {
+	// 非空白符
+	// 如果匹配到了空格，就删掉空格
+	const match = /^[\S ]+/.exec(context.source);
+	if (match) {
+		advanceBy(context, match[0].length);
+	}
 }

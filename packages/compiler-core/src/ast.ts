@@ -60,6 +60,12 @@ export interface Node {
 	loc: SourceLocation;
 }
 
+export interface AttributeNode extends Node {
+	type: NodeTypes.ATTRIBUTE;
+	name: string;
+	value: TextNode | undefined;
+}
+
 export interface BaseElementNode extends Node {
 	// 标签： div  span  br  ul
 	tag: string;
@@ -67,6 +73,8 @@ export interface BaseElementNode extends Node {
 	tagType: ElementTypes;
 
 	children: TemplateChildNode[];
+
+	props: Array<AttributeNode>;
 
 	// 是否是闭合标签
 	isSelfClosing: boolean;
