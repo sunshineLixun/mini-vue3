@@ -114,6 +114,7 @@ describe('compiler: parse', () => {
 				tag: 'div',
 				tagType: ElementTypes.ELEMENT,
 				isSelfClosing: false,
+				props: [],
 				children: [
 					{
 						type: NodeTypes.TEXT,
@@ -142,6 +143,7 @@ describe('compiler: parse', () => {
 				tag: 'div',
 				tagType: ElementTypes.ELEMENT,
 				children: [],
+				props: [],
 				isSelfClosing: false,
 				loc: {
 					start: { column: 1, line: 1, offset: 0 },
@@ -162,6 +164,7 @@ describe('compiler: parse', () => {
 				children: [],
 				isSelfClosing: true,
 				tag: 'div',
+				props: [],
 				tagType: ElementTypes.ELEMENT,
 				loc: {
 					start: { column: 1, line: 1, offset: 0 },
@@ -192,6 +195,7 @@ describe('compiler: parse', () => {
 			expect(element).toStrictEqual({
 				type: NodeTypes.ELEMENT,
 				tag: 'img',
+				props: [],
 				isSelfClosing: false,
 				loc: {
 					start: { column: 1, line: 1, offset: 0 },

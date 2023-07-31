@@ -350,14 +350,15 @@ function isEnd(context, mode, ancestors) {
   return !s;
 }
 function startsWithEndTagOpen(source, tag) {
-  return startsWith(source, "</") && source.slice(2, tag.length + 2).toLowerCase() === tag.toLowerCase() && /[\s />]/.test(source[tag.length + 2] || ">");
+  return startsWith(source, "</") && source.slice(2, tag.length + 2).toLowerCase() === tag.toLowerCase() && // \s 表示空白符 =  [ \t\v\n\r\f]
+  /[\s />]/.test(source[tag.length + 2] || ">");
 }
 function advanceBy(context, numberOfCharacters) {
   advancePositionWithMutation(context, context.source, numberOfCharacters);
   context.source = context.source.slice(numberOfCharacters);
 }
 function advanceSpaces(context) {
-  const match = /^[\S ]+/.exec(context.source);
+  const match = /^[\t\r\n\f ]+/.exec(context.source);
   if (match) {
     advanceBy(context, match[0].length);
   }

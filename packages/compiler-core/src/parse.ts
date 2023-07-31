@@ -86,7 +86,7 @@ function parseChildren(context: ParserContext, mode: TextModes, ancestors: Eleme
 					// </>
 					throw new SyntaxError('语法错误-缺少tag名称');
 				} else if (/[a-z]/i.test(s[2])) {
-					// 匹配到了标签: </a-z>
+					// 匹配到了闭合标签: </a-z>
 					// 解析标签
 					parseTag(context, TagType.End);
 				}
@@ -356,7 +356,7 @@ function parseAttribute(context: ParserContext, nameSet: Set<string>) {
 	let value: AttributeValue = undefined;
 
 	// 匹配=
-	//  =前后都有可能有 空格
+	//  =前后都有可能有 空格，可能会出现多次
 	// eg. id  =    'js' />
 	if (/^[\t\r\n\f ]*=/.test(context.source)) {
 		// 清空=前面空格的情况
@@ -473,6 +473,7 @@ function startsWithEndTagOpen(source: string, tag: string) {
 	return (
 		startsWith(source, '</') &&
 		source.slice(2, tag.length + 2).toLowerCase() === tag.toLowerCase() &&
+		// \s 表示空白符 =  [ \t\v\n\r\f]
 		/[\s />]/.test(source[tag.length + 2] || '>')
 	);
 }
@@ -485,9 +486,8 @@ function advanceBy(context: ParserContext, numberOfCharacters: number) {
 }
 
 function advanceSpaces(context: ParserContext) {
-	// 非空白符
-	// 如果匹配到了空格，就删掉空格
-	const match = /^[\S ]+/.exec(context.source);
+	// 如果匹配到了水平制表符\t 回车符\r 换行符\n 换页符\f 空格 ，删掉这个特殊符号 光标移动到符号后面
+	const match = /^[\t\r\n\f ]+/.exec(context.source);
 	if (match) {
 		advanceBy(context, match[0].length);
 	}
