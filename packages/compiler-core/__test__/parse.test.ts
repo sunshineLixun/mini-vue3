@@ -27,8 +27,6 @@ describe('compiler: parse', () => {
 			const text2 = ast.children[1] as TextNode;
 			const text3 = ast.children[2] as TextNode;
 
-			console.log(text2);
-
 			expect(text1).toStrictEqual({
 				type: NodeTypes.TEXT,
 				loc: {
@@ -91,16 +89,7 @@ describe('compiler: parse', () => {
 		});
 
 		test('HTML error', () => {
-			function getError() {
-				throw new SyntaxError(' HTML语法错误');
-			}
-
-			try {
-				const ast = baseParse('<div><span>some text</span>');
-				const text = ast.children[0] as TextNode;
-			} catch {
-				console.log(expect(() => getError()).toThrow());
-			}
+			expect(() => baseParse('<div><span>some text</span>')).toThrowError('HTML语法错误');
 		});
 	});
 
@@ -206,5 +195,39 @@ describe('compiler: parse', () => {
 				tagType: ElementTypes.ELEMENT
 			});
 		});
+	});
+
+	describe('PROPS', () => {
+		test('without value', () => {
+			const ast = baseParse('<div id></div>');
+			const element = ast.children[0];
+
+			expect(element).toStrictEqual({
+				type: NodeTypes.ELEMENT,
+				tag: 'div',
+				tagType: ElementTypes.ELEMENT,
+				isSelfClosing: false,
+				loc: {
+					start: { column: 1, line: 1, offset: 0 },
+					end: { column: 15, line: 1, offset: 14 },
+					source: '<div id></div>'
+				},
+				children: [],
+				props: [
+					{
+						type: NodeTypes.ATTRIBUTE,
+						name: 'id',
+						value: undefined,
+						loc: {
+							start: { column: 6, line: 1, offset: 5 },
+							end: { column: 8, line: 1, offset: 7 },
+							source: 'id'
+						}
+					}
+				]
+			});
+		});
+
+		test('');
 	});
 });

@@ -137,6 +137,7 @@ function parseInterpolation(context: ParserContext): InterpolationNode | undefin
 	// 去掉两边的空格 此时 content = name
 	const content = preTrimContent.trim();
 
+	// 插值开始的位置
 	const startOffset = preTrimContent.indexOf(content);
 
 	if (startOffset > 0) {
@@ -247,6 +248,7 @@ function parseTag(context: ParserContext, type: TagType): ElementNode {
 	// 删掉空格, 为了后面解析props做准备
 	advanceSpaces(context);
 
+	// 解析props
 	const props = parseAttributes(context, type);
 
 	// 闭合标签 />
@@ -305,8 +307,17 @@ function parseAttributes(context: ParserContext, type: TagType) {
 
 	// 知道匹配到 标签是闭合的位置: > 或者 />，表示匹配完成
 	while (context.source.length > 0 && !startsWith(context.source, '>') && !startsWith(context.source, '/>')) {
+		// 如果匹配到闭合标签，跳过本次循环
+		if (startsWith(context.source, '/')) {
+			// 去掉/
+			advanceBy(context, 1);
+			// 去掉存在空格的可能  eg. / >
+			advanceSpaces(context);
+			continue;
+		}
+
 		if (type === TagType.End) {
-			new SyntaxError('不能从后往前遍历属性');
+			new SyntaxError('闭合标签没有属性');
 		}
 
 		const attr = parseAttribute(context, attributeNames);
@@ -323,6 +334,9 @@ function parseAttributes(context: ParserContext, type: TagType) {
 		if (type === TagType.Start) {
 			props.push(attr);
 		}
+
+		// 删掉多余的空格，eg. <div id='app' />
+		advanceSpaces(context);
 	}
 
 	return props;
@@ -338,6 +352,7 @@ function parseAttribute(context: ParserContext, nameSet: Set<string>) {
 
 	// eg. id='js'></div>
 	// eg. id='js' />
+	// eg. id />
 	// props前面不能有空
 	const match = /^[^\t\r\n\f />][^\t\r\n\f />=]*/.exec(context.source)!;
 
@@ -386,7 +401,7 @@ function parseAttributeValue(context: ParserContext): AttributeValue {
 	const start = getCursor(context);
 	let content: string;
 
-	// value有'' ""
+	// value可能有'' "" 包裹
 	const quote = context.source[0];
 	const isQuoted = quote === `"` || quote === `'`;
 	// 如果有引号
@@ -395,9 +410,8 @@ function parseAttributeValue(context: ParserContext): AttributeValue {
 		advanceBy(context, 1);
 		// 获取最后一个引号的位置
 		const endIndex = context.source.indexOf(quote);
-		// 没找到
+		// 没找到 eg. id='js
 		if (endIndex === -1) {
-			// eg. id=js
 			content = parseTextData(context, context.source.length);
 		} else {
 			content = parseTextData(context, endIndex);
@@ -405,7 +419,7 @@ function parseAttributeValue(context: ParserContext): AttributeValue {
 			advanceBy(context, 1);
 		}
 	} else {
-		// 没有引号
+		// 没有引号 eg. <div id />
 
 		// 匹配value前面没有空白符的数据
 		const match = /^[^\t\r\n\f >]+/.exec(context.source);

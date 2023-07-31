@@ -250,8 +250,13 @@ function parseAttributes(context, type) {
   const props = [];
   const attributeNames = /* @__PURE__ */ new Set();
   while (context.source.length > 0 && !startsWith(context.source, ">") && !startsWith(context.source, "/>")) {
+    if (startsWith(context.source, "/")) {
+      advanceBy(context, 1);
+      advanceSpaces(context);
+      continue;
+    }
     if (type === 1 /* End */) {
-      new SyntaxError("\u4E0D\u80FD\u4ECE\u540E\u5F80\u524D\u904D\u5386\u5C5E\u6027");
+      new SyntaxError("\u95ED\u5408\u6807\u7B7E\u6CA1\u6709\u5C5E\u6027");
     }
     const attr = parseAttribute(context, attributeNames);
     if (attr.type === 6 /* ATTRIBUTE */ && attr.value && attr.name === "class") {
@@ -260,6 +265,7 @@ function parseAttributes(context, type) {
     if (type === 0 /* Start */) {
       props.push(attr);
     }
+    advanceSpaces(context);
   }
   return props;
 }

@@ -9,22 +9,22 @@
 		<script type="module">
 			import { baseParse } from './compiler-core.esm-bundler.js';
 
-			// 1:
+			// 1: text
 			// const ast = baseParse('some text');
 			// console.log(ast);
 
-			// 2:
+			// 2: text html
 			// const ast = baseParse('some text</div>');
 			// console.log(ast);
 
-			// 3:
+			// 3: html
 			// const ast = baseParse('<div><span>some text</span>');
 			// console.log(ast);
 
 			// 4:
-			const ast = baseParse('<div>hello</div>');
-			const element = ast.children[0];
-			console.log(element);
+			// const ast = baseParse('<div>hello</div>');
+			// const element = ast.children[0];
+			// console.log(element);
 
 			// 5:
 			// const ast = baseParse('<div></div>');
@@ -39,6 +39,16 @@
 			// 7: 插值
 			// const ast = baseParse('some {{ message }} text');
 			// console.log(ast);
+
+			// 8:  props 没有 值
+			// const ast = baseParse('<div id></div>');
+			// const element = ast.children[0];
+			// console.log(element);
+
+			// 8.1:
+			const ast = baseParse('<div id="app" />');
+			const element = ast.children[0];
+			console.log(element);
 		</script>
 	</body>
 </html>
