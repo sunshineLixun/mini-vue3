@@ -228,6 +228,42 @@ describe('compiler: parse', () => {
 			});
 		});
 
-		test('');
+		test('with value', () => {
+			const ast = baseParse('<div id="app"></div>');
+			const element = ast.children[0];
+
+			expect(element).toStrictEqual({
+				type: NodeTypes.ELEMENT,
+				tag: 'div',
+				tagType: ElementTypes.ELEMENT,
+				isSelfClosing: false,
+				loc: {
+					start: { column: 1, line: 1, offset: 0 },
+					end: { column: 21, line: 1, offset: 20 },
+					source: '<div id="app"></div>'
+				},
+				children: [],
+				props: [
+					{
+						type: NodeTypes.ATTRIBUTE,
+						name: 'id',
+						value: {
+							content: 'app',
+							loc: {
+								start: { column: 9, line: 1, offset: 8 },
+								end: { column: 14, line: 1, offset: 13 },
+								source: '"app"'
+							},
+							type: NodeTypes.TEXT
+						},
+						loc: {
+							start: { column: 6, line: 1, offset: 5 },
+							end: { column: 14, line: 1, offset: 13 },
+							source: 'id="app"'
+						}
+					}
+				]
+			});
+		});
 	});
 });
