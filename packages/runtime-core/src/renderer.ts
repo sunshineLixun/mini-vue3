@@ -154,6 +154,58 @@ function baseCreateRenderer(options: RendererOptions) {
 		}
 	};
 
+	function patchKeyedChildren(c1: VNode[], c2: VNodeArrayChildren, container: RendererElement) {
+		let i = 0;
+		// 最大长度
+		const l1 = c1.length;
+		const l2 = c2.length;
+
+		let e1 = l1 - 1; // 老的最后一个
+		let e2 = l2 - 1; // 新值最后一个
+
+		// 1： 从头开始查找
+
+		// a b c
+		// a b c d
+
+		// 当达到 老值 或者 新值 任何一个 就结束循环
+		while (i <= e1 && i <= e2) {
+			const n1 = c1[i];
+			// n2 copy一下，避免直接修改用户传入的新值
+			const n2 = normalizeVNode(c2[i]);
+
+			if (isSameVNodeType(n1, n2)) {
+				// 表示是同一个节点，递归处理, 比较内部
+				patch(n1, n2, container, null);
+			} else {
+				// 当遇到不同的节点时，结束循环
+				break;
+			}
+			i++;
+		}
+
+		// 2：从后面开始查找
+
+		//   a b c
+		// a f b c
+
+		while (i <= e1 && i <= e2) {
+			const n1 = c1[e1];
+			// n2 copy一下，避免直接修改用户传入的新值
+			const n2 = normalizeVNode(c2[e2]);
+			if (isSameVNodeType(n1, n2)) {
+				patch(n1, n2, container, null);
+			} else {
+				break;
+			}
+
+			// 这种情况下 循环因子 i 不变
+			// 老值 新值 同时往前推进
+			e1--;
+			e2--;
+		}
+	}
+
 	/**
 	 * 总体来说是子元素有3种情况：文本 数组 空
 	 * 下面可以细分9种场景
@@ -199,6 +251,7 @@ function baseCreateRenderer(options: RendererOptions) {
 					// 重点： 全量 diff
 					// 这里是情况最复杂的，也是最喜欢问考点的：
 					// 1：为啥循环要指定key
+					patchKeyedChildren(c1 as VNode[], c2 as VNodeArrayChildren, container);
 				} else {
 					// 这个分支对应第7种情况，因为第1种情况走了上面的if分支
 					// 新值是空的，直接卸载老值

@@ -47,6 +47,34 @@ function baseCreateRenderer(options) {
       unmount(childrens[i]);
     }
   };
+  function patchKeyedChildren(c1, c2, container) {
+    let i = 0;
+    const l1 = c1.length;
+    const l2 = c2.length;
+    let e1 = l1 - 1;
+    let e2 = l2 - 1;
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[i];
+      const n2 = normalizeVNode(c2[i]);
+      if (isSameVNodeType(n1, n2)) {
+        patch(n1, n2, container, null);
+      } else {
+        break;
+      }
+      i++;
+    }
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[e1];
+      const n2 = normalizeVNode(c2[e2]);
+      if (isSameVNodeType(n1, n2)) {
+        patch(n1, n2, container, null);
+      } else {
+        break;
+      }
+      e1--;
+      e2--;
+    }
+  }
   const patchChildren = (n1, n2, container, anchor) => {
     const c1 = n1.children;
     const prevShapFlags = n1 ? n1.shapeFlag : 0;
@@ -62,6 +90,7 @@ function baseCreateRenderer(options) {
     } else {
       if (prevShapFlags & 16 /* ARRAY_CHILDREN */) {
         if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+          patchKeyedChildren(c1, c2, container);
         } else {
           unmountChildren(c1);
         }

@@ -90,16 +90,75 @@
 			// }, 1000);
 
 			// 6.4: 老值空，新值 数组
-			const vnode = h('div');
-			render(vnode, app);
+			// const vnode = h('div');
+			// render(vnode, app);
+
+			// setTimeout(() => {
+			// 	const vnode = h(
+			// 		'div',
+			// 		{ style: { color: 'blue' } },
+			// 		h('span', { style: { color: '#345545' } }, '老值显示的内容')
+			// 	);
+			// 	render(vnode, app);
+			// }, 1000);
+
+			// 7: patch children array
+
+			// 7.1 老的少 新的多
+			// render(h('div', { key: 'a', style: { display: 'inline-grid' } }, [h('span', { key: 'b' }, 'b')]), app);
+
+			// setTimeout(() => {
+			// 	render(
+			// 		h('div', { key: 'a', style: { display: 'inline-grid' } }, [
+			// 			h('span', { key: 'b' }, '新的b'),
+			// 			h('span', { key: 'c' }, 'c'),
+			// 			h('span', { key: 'd' }, 'd')
+			// 		]),
+			// 		app
+			// 	);
+			// }, 1000);
+
+			// 7.2: 老的多，新的少
+
+			// b c d
+			// b
+
+			// render(
+			// 	h('div', { key: 'a', style: { display: 'inline-grid' } }, [
+			// 		h('span', { key: 'b' }, '老的b'),
+			// 		h('span', { key: 'c' }, 'c'),
+			// 		h('span', { key: 'd' }, 'd')
+			// 	]),
+			// 	app
+			// );
+
+			// setTimeout(() => {
+			// 	render(h('div', { key: 'a', style: { display: 'inline-grid' } }, [h('span', { key: 'b' }, '新的b')]), app);
+			// }, 1000);
+
+			// 7.3 从后开始遍历
+
+			// a b c
+			// f e b c
+			render(
+				h('div', { key: 'a', style: { display: 'inline-grid' } }, [
+					h('span', { key: 'a' }, 'a'),
+					h('span', { key: 'b' }, 'b'),
+					h('span', { key: 'c' }, 'c')
+				]),
+				app
+			);
 
 			setTimeout(() => {
-				const vnode = h(
-					'div',
-					{ style: { color: 'blue' } },
-					h('span', { style: { color: '#345545' } }, '老值显示的内容')
+				render(
+					h('div', { key: 'a', style: { display: 'inline-grid' } }, [
+						h('span', { key: 'f' }, 'f'),
+						h('span', { key: 'e' }, 'e'),
+						h('span', { key: 'b' }, '新b'),
+						h('span', { key: 'c' }, '新c')
+					]),
+					app
 				);
-				render(vnode, app);
 			}, 1000);
 		</script>
 	</body>
