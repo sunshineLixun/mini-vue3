@@ -186,7 +186,7 @@ function baseCreateRenderer(options: RendererOptions) {
 
 		// 2：从后面开始查找
 
-		//   a b c
+		//     b c
 		// a f b c
 
 		while (i <= e1 && i <= e2) {
@@ -203,6 +203,56 @@ function baseCreateRenderer(options: RendererOptions) {
 			// 老值 新值 同时往前推进
 			e1--;
 			e2--;
+		}
+
+		// 公共序列 元素的挂载
+		//  a b c
+		//  a b c d
+		//  i = 3; e1 = 2; e2 = 3;
+
+		//      a c
+		//  f e a c
+		// i = 0; e1 = -1; e2 = 1;
+
+		// 挂载新值要满足一下条件：
+		// 1：新值一定比老值长，可以用 i 来判断， 此时 i 一定是大于 老值 e1的长度
+		// 2：循环因子 i 要在新值的范围内
+
+		if (i > e1) {
+			if (i <= e2) {
+				//  挂载新值
+				// 怎么获取插入描点？
+				// 1：先获取下一个元素
+				// 2：如果下一个元素 仍然小于新值的最大长度，说明是向前插入，否则就是向后插入，向后插入直接传null即可
+				const nextPos = e2 + 1;
+				const anchor = nextPos < l2 ? (c2[nextPos] as VNode).el : null;
+				while (i <= e2) {
+					patch(null, normalizeVNode(c2[i]), container, anchor);
+					i++;
+				}
+			}
+		}
+
+		// 公共序列 元素的卸载
+
+		//  a b c
+		//  a b
+		//  i = 2; e1 = 2; e2 = 1;
+
+		//  a b c d
+		//      c d
+		//  i = 0; e1 = 1; e2 = -1;
+
+		// 满足这个条件：
+		// 1: 新值比老值 短 可以用 i 来判断 , 此时 i 大于新值的长度，小于老值的长度
+		// 2: 循环因子 i 要在新值的范围内
+		else if (i > e2) {
+			if (i <= e1) {
+				while (i <= e1) {
+					unmount(c1[i]);
+					i++;
+				}
+			}
 		}
 	}
 
@@ -366,7 +416,7 @@ function baseCreateRenderer(options: RendererOptions) {
 		}
 	};
 
-	const patch: PatchFn = (n1, n2, container, anchor) => {
+	const patch: PatchFn = (n1, n2, container, anchor = null) => {
 		// 相同的节点，直接返回
 		if (n1 === n2) {
 			return;

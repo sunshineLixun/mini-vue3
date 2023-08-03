@@ -74,6 +74,23 @@ function baseCreateRenderer(options) {
       e1--;
       e2--;
     }
+    if (i > e1) {
+      if (i <= e2) {
+        const nextPos = e2 + 1;
+        const anchor = nextPos < l2 ? c2[nextPos].el : null;
+        while (i <= e2) {
+          patch(null, normalizeVNode(c2[i]), container, anchor);
+          i++;
+        }
+      }
+    } else if (i > e2) {
+      if (i <= e1) {
+        while (i <= e1) {
+          unmount(c1[i]);
+          i++;
+        }
+      }
+    }
   }
   const patchChildren = (n1, n2, container, anchor) => {
     const c1 = n1.children;
@@ -159,7 +176,7 @@ function baseCreateRenderer(options) {
       patchElement(n1, n2);
     }
   };
-  const patch = (n1, n2, container, anchor) => {
+  const patch = (n1, n2, container, anchor = null) => {
     if (n1 === n2) {
       return;
     }

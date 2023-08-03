@@ -118,7 +118,7 @@
 			// 	);
 			// }, 1000);
 
-			// 7.2: 老的多，新的少
+			// 7.2: 从前开始遍历 - 卸载元素
 
 			// b c d
 			// b
@@ -136,26 +136,72 @@
 			// 	render(h('div', { key: 'a', style: { display: 'inline-grid' } }, [h('span', { key: 'b' }, '新的b')]), app);
 			// }, 1000);
 
-			// 7.3 从后开始遍历
-
-			// a b c
+			// 7.3 从后开始遍历 - 挂载新元素
+			//     b c
 			// f e b c
+			// render(
+			// 	h('div', { key: 'div', style: { display: 'inline-grid' } }, [
+			// 		h('span', { key: 'b' }, 'b'),
+			// 		h('span', { key: 'c' }, 'c')
+			// 	]),
+			// 	app
+			// );
+
+			// setTimeout(() => {
+			// 	render(
+			// 		h('div', { key: 'div', style: { display: 'inline-grid' } }, [
+			// 			h('span', { key: 'f' }, 'f'),
+			// 			h('span', { key: 'e' }, 'e'),
+			// 			h('span', { key: 'b' }, '新b'),
+			// 			h('span', { key: 'c' }, '新c')
+			// 		]),
+			// 		app
+			// 	);
+			// }, 1000);
+
+			// 7.4 从前开始遍历，挂载
+			// a b
+			// a b c d
+
+			// render(
+			// 	h('div', { key: 'div', style: { display: 'inline-grid' } }, [
+			// 		h('span', { key: 'a' }, 'a'),
+			// 		h('span', { key: 'b' }, 'b')
+			// 	]),
+			// 	app
+			// );
+
+			// setTimeout(() => {
+			// 	render(
+			// 		h('div', { key: 'div', style: { display: 'inline-grid' } }, [
+			// 			h('span', { key: 'a' }, '新a'),
+			// 			h('span', { key: 'b' }, '新b'),
+			// 			h('span', { key: 'c' }, 'c'),
+			// 			h('span', { key: 'd' }, 'd')
+			// 		]),
+			// 		app
+			// 	);
+			// }, 1000);
+
+			// 7.5 从后开始遍历，卸载
+			// a b c d
+			// c d
+
 			render(
-				h('div', { key: 'a', style: { display: 'inline-grid' } }, [
+				h('div', { key: 'div', style: { display: 'inline-grid' } }, [
 					h('span', { key: 'a' }, 'a'),
 					h('span', { key: 'b' }, 'b'),
-					h('span', { key: 'c' }, 'c')
+					h('span', { key: 'c' }, 'c'),
+					h('span', { key: 'd' }, 'd')
 				]),
 				app
 			);
 
 			setTimeout(() => {
 				render(
-					h('div', { key: 'a', style: { display: 'inline-grid' } }, [
-						h('span', { key: 'f' }, 'f'),
-						h('span', { key: 'e' }, 'e'),
-						h('span', { key: 'b' }, '新b'),
-						h('span', { key: 'c' }, '新c')
+					h('div', { key: 'div', style: { display: 'inline-grid' } }, [
+						h('span', { key: 'c' }, 'c'),
+						h('span', { key: 'd' }, 'd')
 					]),
 					app
 				);
