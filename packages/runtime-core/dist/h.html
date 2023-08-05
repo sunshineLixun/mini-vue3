@@ -187,12 +187,40 @@
 			// a b c d
 			// c d
 
+			// render(
+			// 	h('div', { key: 'div', style: { display: 'inline-grid' } }, [
+			// 		h('span', { key: 'a' }, 'a'),
+			// 		h('span', { key: 'b' }, 'b'),
+			// 		h('span', { key: 'c' }, 'c'),
+			// 		h('span', { key: 'd' }, 'd')
+			// 	]),
+			// 	app
+			// );
+
+			// setTimeout(() => {
+			// 	render(
+			// 		h('div', { key: 'div', style: { display: 'inline-grid' } }, [
+			// 			h('span', { key: 'c' }, 'c'),
+			// 			h('span', { key: 'd' }, 'd')
+			// 		]),
+			// 		app
+			// 	);
+			// }, 1000);
+
+			// 7.6 中间部分不同
+			//  a b [c d e] f g
+			//  a b [e d c h] f g
+
 			render(
 				h('div', { key: 'div', style: { display: 'inline-grid' } }, [
 					h('span', { key: 'a' }, 'a'),
 					h('span', { key: 'b' }, 'b'),
-					h('span', { key: 'c' }, 'c'),
-					h('span', { key: 'd' }, 'd')
+					h('span', { key: 'c', style: { color: 'blue' } }, 'c'),
+					h('span', { key: 'd' }, 'd'),
+					h('span', { key: 'e' }, 'e'),
+					h('span', { key: 'h' }, 'h'),
+					h('span', { key: 'f' }, 'f'),
+					h('span', { key: 'g' }, 'g')
 				]),
 				app
 			);
@@ -200,8 +228,14 @@
 			setTimeout(() => {
 				render(
 					h('div', { key: 'div', style: { display: 'inline-grid' } }, [
-						h('span', { key: 'c' }, 'c'),
-						h('span', { key: 'd' }, 'd')
+						h('span', { key: 'a' }, 'a'),
+						h('span', { key: 'b' }, 'b'),
+						h('span', { key: 'e' }, 'e'),
+						h('span', { key: 'd' }, 'd'),
+						h('span', { key: 'c', style: { color: 'red' } }, 'c'),
+
+						h('span', { key: 'f' }, 'f'),
+						h('span', { key: 'g' }, 'g')
 					]),
 					app
 				);

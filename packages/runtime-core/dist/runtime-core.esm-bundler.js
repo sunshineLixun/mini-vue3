@@ -90,6 +90,25 @@ function baseCreateRenderer(options) {
           i++;
         }
       }
+    } else {
+      const s1 = i;
+      const s2 = i;
+      const keyToNewIndexMap = /* @__PURE__ */ new Map();
+      for (i = s2; i <= e2; i++) {
+        const nextChild = c2[i] = normalizeVNode(c2[i]);
+        if (nextChild.key !== null) {
+          keyToNewIndexMap.set(nextChild.key, i);
+        }
+      }
+      for (i = s1; i <= e1; i++) {
+        const prevChild = c1[i];
+        const newIndex = keyToNewIndexMap.get(prevChild.key);
+        if (newIndex === void 0) {
+          unmount(prevChild);
+        } else {
+          patch(prevChild, c2[newIndex], container);
+        }
+      }
     }
   }
   const patchChildren = (n1, n2, container, anchor) => {

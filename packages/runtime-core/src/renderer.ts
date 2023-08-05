@@ -88,7 +88,7 @@ export type RootRenderFunction<HostElement = RendererElement> = (vnode: VNode | 
 /**
  * n1 标识已经老节点，n2标识新节点  container标识渲染跟元素
  */
-type PatchFn = (n1: VNode | null, n2: VNode, container: RendererElement, anchor: RendererNode | null) => void;
+type PatchFn = (n1: VNode | null, n2: VNode, container: RendererElement, anchor?: RendererNode | null) => void;
 
 type NextFn = (vnode: VNode) => RendererNode;
 
@@ -163,6 +163,8 @@ function baseCreateRenderer(options: RendererOptions) {
 		let e1 = l1 - 1; // 老的最后一个
 		let e2 = l2 - 1; // 新值最后一个
 
+		// ------- 开始部分相同的vnode 比较
+
 		// 1： 从头开始查找
 
 		// a b c
@@ -183,6 +185,8 @@ function baseCreateRenderer(options: RendererOptions) {
 			}
 			i++;
 		}
+
+		// ------- 结尾部分相同的vnode 比较
 
 		// 2：从后面开始查找
 
@@ -251,6 +255,48 @@ function baseCreateRenderer(options: RendererOptions) {
 				while (i <= e1) {
 					unmount(c1[i]);
 					i++;
+				}
+			}
+		} else {
+			// ------- 两端相同，中间部位不同的vnode 比较
+
+			//  a b [c d e] f g
+			//  a b [e d c h] f g
+			// 中间的不同
+			//  i = 2; e1 = 4; e2 = 5;
+
+			// 步骤：
+			// 1： 第一个先遍历新序列，获取到keyToNewIndexMap
+			// 2： 遍历老序列从keyToNewIndexMap中查找是否有新序列的值，存在就复用，不存在就删除
+
+			const s1 = i; // 老的 i 比较的位置
+			const s2 = i; // 新的 i 比较的位置
+
+			// 存储新值的 映射，key是 vnode的key, value是 index
+			// {vnode.key: index}
+			const keyToNewIndexMap: Map<string | number | symbol, number> = new Map();
+
+			// 新序列的循环
+			for (i = s2; i <= e2; i++) {
+				const nextChild = (c2[i] = normalizeVNode(c2[i]));
+
+				if (nextChild.key !== null) {
+					keyToNewIndexMap.set(nextChild.key, i);
+				}
+			}
+
+			// 老序列循环
+			for (i = s1; i <= e1; i++) {
+				const prevChild = c1[i];
+				// 从映射表中查找是否有 在 老的序列中 有新序列的值
+				const newIndex = keyToNewIndexMap.get(prevChild.key);
+
+				// 不存在: 说明新的里面没有，就要删除该vnode
+				if (newIndex === undefined) {
+					unmount(prevChild);
+				} else {
+					// 存在就复用该vnode, 进行patch
+					patch(prevChild, c2[newIndex] as VNode, container);
 				}
 			}
 		}
