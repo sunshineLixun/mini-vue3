@@ -299,6 +299,32 @@ function baseCreateRenderer(options: RendererOptions) {
 					patch(prevChild, c2[newIndex] as VNode, container);
 				}
 			}
+
+			// TODO: 新元素的移动、插入
+
+			//  a b [c d e] f g
+			//  a b [e d c h] f g
+
+			let patched = 0;
+			// 将要被patch的元素长度：就是从e -> h
+			const toBePatched = e2 - s2 + 1;
+
+			// 记录被新元素 对应老元素 的位置，默认初始化为0
+			const newIndexToOldIndexMap = new Array(toBePatched).fill(0);
+
+			// 循环老元素序列
+			for (i = s1; i <= e1; i++) {
+				// 获取vnode
+				const prevChild = c1[i];
+				// 新元素比老元素少
+
+				//  a b [c d e] f g
+				//  a b f g
+				if (patched >= toBePatched) {
+					unmount(prevChild);
+					continue;
+				}
+			}
 		}
 	}
 

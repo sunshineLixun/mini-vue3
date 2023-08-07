@@ -109,6 +109,16 @@ function baseCreateRenderer(options) {
           patch(prevChild, c2[newIndex], container);
         }
       }
+      let patched = 0;
+      const toBePatched = e2 - s2 + 1;
+      const newIndexToOldIndexMap = new Array(toBePatched).fill(0);
+      for (i = s1; i <= e1; i++) {
+        const prevChild = c1[i];
+        if (patched >= toBePatched) {
+          unmount(prevChild);
+          continue;
+        }
+      }
     }
   }
   const patchChildren = (n1, n2, container, anchor) => {
