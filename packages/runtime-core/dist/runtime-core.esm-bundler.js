@@ -205,6 +205,16 @@ function baseCreateRenderer(options) {
       patchElement(n1, n2);
     }
   };
+  const processText = (n1, n2, el, anchor) => {
+    if (n1 === null) {
+      hostInsert(n2.el = hostCreateText(n2.children), el, anchor);
+    } else {
+      const el2 = n2.el = n1.el;
+      if (n2.children !== n1.children) {
+        hostSetText(el2, n2.children);
+      }
+    }
+  };
   const patch = (n1, n2, container, anchor = null) => {
     if (n1 === n2) {
       return;
@@ -217,6 +227,7 @@ function baseCreateRenderer(options) {
     const { type, shapeFlag } = n2;
     switch (type) {
       case Text:
+        processText(n1, n2, container, anchor);
         break;
       case Comment:
         break;

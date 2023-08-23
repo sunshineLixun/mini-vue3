@@ -8,11 +8,20 @@
 	<body>
 		<div id="app"></div>
 		<script type="module">
-			import { h, render, createVNode } from './runtime-core.esm-bundler.js';
+			import { h, render, createVNode, Text } from './runtime-core.esm-bundler.js';
 
 			// 1：基本的渲染
 			// const vnode = h('div', '内容');
 			// render(vnode, app);
+
+			// 1.1 Text
+
+			const vnode = h(Text, '111');
+			render(vnode, app);
+
+			setTimeout(() => {
+				render(h(Text, '222'), app);
+			}, 1000);
 
 			// 2: props
 			// const vnode = h('div', { style: { color: 'blue' } }, '显示的内容');
@@ -211,34 +220,34 @@
 			//  a b [c d e] f g
 			//  a b [e d c h] f g
 
-			render(
-				h('div', { key: 'div', style: { display: 'inline-grid' } }, [
-					h('span', { key: 'a' }, 'a'),
-					h('span', { key: 'b' }, 'b'),
-					h('span', { key: 'c', style: { color: 'blue' } }, 'c'),
-					h('span', { key: 'd' }, 'd'),
-					h('span', { key: 'e' }, 'e'),
-					h('span', { key: 'h' }, 'h'),
-					h('span', { key: 'f' }, 'f'),
-					h('span', { key: 'g' }, 'g')
-				]),
-				app
-			);
+			// render(
+			// 	h('div', { key: 'div', style: { display: 'inline-grid' } }, [
+			// 		h('span', { key: 'a' }, 'a'),
+			// 		h('span', { key: 'b' }, 'b'),
+			// 		h('span', { key: 'c', style: { color: 'blue' } }, 'c'),
+			// 		h('span', { key: 'd' }, 'd'),
+			// 		h('span', { key: 'e' }, 'e'),
+			// 		h('span', { key: 'h' }, 'h'),
+			// 		h('span', { key: 'f' }, 'f'),
+			// 		h('span', { key: 'g' }, 'g')
+			// 	]),
+			// 	app
+			// );
 
-			setTimeout(() => {
-				render(
-					h('div', { key: 'div', style: { display: 'inline-grid' } }, [
-						h('span', { key: 'a' }, 'a'),
-						h('span', { key: 'b' }, 'b'),
-						h('span', { key: 'e' }, 'e'),
-						h('span', { key: 'd' }, 'd'),
-						h('span', { key: 'c', style: { color: 'red' } }, 'c'),
-						h('span', { key: 'f' }, 'f'),
-						h('span', { key: 'g' }, 'g')
-					]),
-					app
-				);
-			}, 1000);
+			// setTimeout(() => {
+			// 	render(
+			// 		h('div', { key: 'div', style: { display: 'inline-grid' } }, [
+			// 			h('span', { key: 'a' }, 'a'),
+			// 			h('span', { key: 'b' }, 'b'),
+			// 			h('span', { key: 'e' }, 'e'),
+			// 			h('span', { key: 'd' }, 'd'),
+			// 			h('span', { key: 'c', style: { color: 'red' } }, 'c'),
+			// 			h('span', { key: 'f' }, 'f'),
+			// 			h('span', { key: 'g' }, 'g')
+			// 		]),
+			// 		app
+			// 	);
+			// }, 1000);
 		</script>
 	</body>
 </html>

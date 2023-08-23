@@ -488,6 +488,19 @@ function baseCreateRenderer(options: RendererOptions) {
 		}
 	};
 
+	const processText: ProcessTextFn = (n1, n2, el, anchor) => {
+		if (n1 === null) {
+			// 挂载
+			hostInsert((n2.el = hostCreateText(n2.children as string)), el, anchor);
+		} else {
+			// 更新
+			const el = (n2.el = n1.el);
+			if (n2.children !== n1.children) {
+				hostSetText(el, n2.children as string);
+			}
+		}
+	};
+
 	const patch: PatchFn = (n1, n2, container, anchor = null) => {
 		// 相同的节点，直接返回
 		if (n1 === n2) {
@@ -509,6 +522,7 @@ function baseCreateRenderer(options: RendererOptions) {
 		//  TODO: 判断节点类型, 有Text Comment Fragment Static
 		switch (type) {
 			case Text:
+				processText(n1, n2, container, anchor);
 				break;
 			case Comment:
 				break;
