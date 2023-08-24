@@ -99,6 +99,13 @@ type ProcessCommentFn = (n1: VNode | null, n2: VNode, container: RendererElement
 
 type ProcessElementFn = (n1: VNode | null, n2: VNode, container: RendererElement, anchor: RendererNode | null) => void;
 
+type ProcessComponentFn = (
+	n1: VNode | null,
+	n2: VNode,
+	container: RendererElement,
+	anchor: RendererNode | null
+) => void;
+
 type MountElementFn = (vnode: VNode, container: RendererElement, anchor: RendererNode | null) => void;
 
 type PatchElementFn = (n1: VNode | null, n2: VNode) => void;
@@ -145,7 +152,7 @@ function baseCreateRenderer(options: RendererOptions) {
 		for (let i = start; i < children.length; i++) {
 			// 这里的child可能是普通文本(string, number)，也可能是vnode，也可能是 [h('span'), h('div')]
 			const child = normalizeVNode(children[i]);
-			// 递归处理
+			// 递归处理每个子元素
 			patch(null, child, el, anchor);
 		}
 	};
@@ -519,7 +526,7 @@ function baseCreateRenderer(options: RendererOptions) {
 		const fragmentStartAnchor = (n2.el = n1 ? n1.el : hostCreateText(''))!;
 		const fragmentEndAnchor = (n2.anchor = n1 ? n1.anchor : hostCreateText(''))!;
 		if (n1 === null) {
-			// 挂载： 默认插入空的文本信息
+			// 父元素默认是空文本
 			hostInsert(fragmentStartAnchor, container, anchor);
 			hostInsert(fragmentEndAnchor, container, anchor);
 
@@ -530,6 +537,16 @@ function baseCreateRenderer(options: RendererOptions) {
 			patchChildren(n1, n2, container, fragmentEndAnchor);
 		}
 	};
+
+	const processComponent: ProcessComponentFn = (n1, n2, container, anchor) => {
+		if (n1 === null) {
+		} else {
+		}
+	};
+
+	const mountComponent = () => {};
+
+	const updateComponent = () => {};
 
 	const patch: PatchFn = (n1, n2, container, anchor = null) => {
 		// 相同的节点，直接返回
@@ -549,7 +566,6 @@ function baseCreateRenderer(options: RendererOptions) {
 		}
 		const { type, shapeFlag } = n2;
 
-		//  TODO: 判断节点类型, 有Text Comment Fragment Static
 		switch (type) {
 			case Text:
 				processText(n1, n2, container, anchor);
@@ -567,7 +583,7 @@ function baseCreateRenderer(options: RendererOptions) {
 					processElement(n1, n2, container, anchor);
 				} else if (shapeFlag & ShapeFlags.COMPONENT) {
 					// 组件
-					// TODO: 组件
+					processComponent(n1, n2, container, anchor);
 				}
 				break;
 		}

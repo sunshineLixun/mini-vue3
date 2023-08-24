@@ -233,6 +233,15 @@ function baseCreateRenderer(options) {
       patchChildren(n1, n2, container, fragmentEndAnchor);
     }
   };
+  const processComponent = (n1, n2, container, anchor) => {
+    if (n1 === null) {
+    } else {
+    }
+  };
+  const mountComponent = () => {
+  };
+  const updateComponent = () => {
+  };
   const patch = (n1, n2, container, anchor = null) => {
     if (n1 === n2) {
       return;
@@ -257,6 +266,7 @@ function baseCreateRenderer(options) {
         if (shapeFlag & 1 /* ELEMENT */) {
           processElement(n1, n2, container, anchor);
         } else if (shapeFlag & 6 /* COMPONENT */) {
+          processComponent(n1, n2, container, anchor);
         }
         break;
     }
@@ -306,7 +316,7 @@ var normalizeRef = ({ ref }) => {
   return ref;
 };
 function createVNode(type, props = null, children = null) {
-  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : 0;
+  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 6 /* COMPONENT */ : 0;
   return createBaseVNode(type, props, children, shapeFlag);
 }
 function createBaseVNode(type, props = null, children = null, shapeFlag = type === Fragment ? 0 : 1 /* ELEMENT */) {

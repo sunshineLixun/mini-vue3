@@ -1,6 +1,7 @@
 import { Ref } from '@vue/reactivity';
-import { ShapeFlags, isArray, isString } from '@vue/shared';
+import { ShapeFlags, isArray, isObject, isString } from '@vue/shared';
 import { RendererNode } from './renderer';
+import { Component } from './components';
 
 // ref='xxx'
 // ref="ref('xxx)"
@@ -25,7 +26,7 @@ export const Text = Symbol.for('v-txt');
 export const Comment = Symbol.for('v-cmt');
 
 /**虚拟node的类型，文本 或者是node */
-export type VNodeTypes = string | VNode | typeof Text | typeof Comment | typeof Fragment;
+export type VNodeTypes = string | VNode | Component | typeof Text | typeof Comment | typeof Fragment;
 
 export type Data = Record<string, unknown>;
 
@@ -109,7 +110,8 @@ export function createVNode(
 
 	// eg. h('div')  h('div', { props })  h('div', { props }, children)
 	// 如果有值，一定是元素类型
-	const shapeFlag = isString(type) ? ShapeFlags.ELEMENT : 0;
+	// 如果是对象，则为组件类型
+	const shapeFlag = isString(type) ? ShapeFlags.ELEMENT : isObject(type) ? ShapeFlags.COMPONENT : 0;
 
 	return createBaseVNode(type, props, children, shapeFlag);
 }
