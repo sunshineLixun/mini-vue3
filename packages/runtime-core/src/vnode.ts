@@ -23,11 +23,9 @@ export const Fragment = Symbol.for('v-fgt') as any as {
 export const Text = Symbol.for('v-txt');
 /**注释节点 */
 export const Comment = Symbol.for('v-cmt');
-/**静态节点，children的内容不会变动的。 eg. <div>123</div> */
-export const Static = Symbol.for('v-stc');
 
 /**虚拟node的类型，文本 或者是node */
-export type VNodeTypes = string | VNode | typeof Text | typeof Static | typeof Comment | typeof Fragment;
+export type VNodeTypes = string | VNode | typeof Text | typeof Comment | typeof Fragment;
 
 export type Data = Record<string, unknown>;
 

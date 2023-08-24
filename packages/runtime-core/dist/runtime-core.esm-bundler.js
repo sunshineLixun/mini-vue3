@@ -215,6 +215,24 @@ function baseCreateRenderer(options) {
       }
     }
   };
+  const processComment = (n1, n2, container, anchor) => {
+    if (n1 === null) {
+      hostInsert(n2.el = hostCreateComment(n2.children || ""), container, anchor);
+    } else {
+      n2.el = n1.el;
+    }
+  };
+  const processFragment = (n1, n2, container, anchor) => {
+    const fragmentStartAnchor = n2.el = n1 ? n1.el : hostCreateText("");
+    const fragmentEndAnchor = n2.anchor = n1 ? n1.anchor : hostCreateText("");
+    if (n1 === null) {
+      hostInsert(fragmentStartAnchor, container, anchor);
+      hostInsert(fragmentEndAnchor, container, anchor);
+      mountChildren(n2.children, container, fragmentEndAnchor);
+    } else {
+      patchChildren(n1, n2, container, fragmentEndAnchor);
+    }
+  };
   const patch = (n1, n2, container, anchor = null) => {
     if (n1 === n2) {
       return;
@@ -230,6 +248,10 @@ function baseCreateRenderer(options) {
         processText(n1, n2, container, anchor);
         break;
       case Comment:
+        processComment(n1, n2, container, anchor);
+        break;
+      case Fragment:
+        processFragment(n1, n2, container, anchor);
         break;
       default:
         if (shapeFlag & 1 /* ELEMENT */) {
@@ -273,7 +295,6 @@ function baseCreateRenderer(options) {
 var Fragment = Symbol.for("v-fgt");
 var Text = Symbol.for("v-txt");
 var Comment = Symbol.for("v-cmt");
-var Static = Symbol.for("v-stc");
 function isVNode(value) {
   return value ? value.__v_isVNode === true : false;
 }
@@ -479,7 +500,6 @@ export {
   CloneVNode,
   Comment,
   Fragment,
-  Static,
   Text,
   createRenderer,
   createVNode,

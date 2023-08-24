@@ -6,7 +6,8 @@ import {
 	isSameVNodeType,
 	normalizeVNode,
 	Text,
-	Comment
+	Comment,
+	Fragment
 } from '@vue/runtime-core';
 import { EMPTY_OBJ, ShapeFlags, isReservedProp } from '@vue/shared';
 
@@ -93,6 +94,8 @@ type PatchFn = (n1: VNode | null, n2: VNode, container: RendererElement, anchor?
 type NextFn = (vnode: VNode) => RendererNode;
 
 type ProcessTextFn = (n1: VNode | null, n2: VNode, container: RendererElement, anchor: RendererNode | null) => void;
+
+type ProcessCommentFn = (n1: VNode | null, n2: VNode, container: RendererElement, anchor: RendererNode | null) => void;
 
 type ProcessElementFn = (n1: VNode | null, n2: VNode, container: RendererElement, anchor: RendererNode | null) => void;
 
@@ -501,6 +504,33 @@ function baseCreateRenderer(options: RendererOptions) {
 		}
 	};
 
+	const processComment: ProcessCommentFn = (n1, n2, container, anchor) => {
+		if (n1 === null) {
+			hostInsert((n2.el = hostCreateComment((n2.children as string) || '')), container, anchor);
+		} else {
+			n2.el = n1.el;
+			// 不支持动态 注释节点
+		}
+	};
+
+	const processFragment = (n1: VNode | null, n2: VNode, container: RendererElement, anchor: RendererNode | null) => {
+		// 如果是第一次渲染，n2.el 默认是创建一个text文本
+		// patch更新时：n2.el = n1
+		const fragmentStartAnchor = (n2.el = n1 ? n1.el : hostCreateText(''))!;
+		const fragmentEndAnchor = (n2.anchor = n1 ? n1.anchor : hostCreateText(''))!;
+		if (n1 === null) {
+			// 挂载： 默认插入空的文本信息
+			hostInsert(fragmentStartAnchor, container, anchor);
+			hostInsert(fragmentEndAnchor, container, anchor);
+
+			// fragmnet 子元素必须是children
+			mountChildren(n2.children as VNodeArrayChildren, container, fragmentEndAnchor);
+		} else {
+			// patch
+			patchChildren(n1, n2, container, fragmentEndAnchor);
+		}
+	};
+
 	const patch: PatchFn = (n1, n2, container, anchor = null) => {
 		// 相同的节点，直接返回
 		if (n1 === n2) {
@@ -525,6 +555,10 @@ function baseCreateRenderer(options: RendererOptions) {
 				processText(n1, n2, container, anchor);
 				break;
 			case Comment:
+				processComment(n1, n2, container, anchor);
+				break;
+			case Fragment:
+				processFragment(n1, n2, container, anchor);
 				break;
 			default:
 				// 这里先处理普通元素 div  span ul

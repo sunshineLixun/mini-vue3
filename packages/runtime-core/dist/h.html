@@ -8,7 +8,7 @@
 	<body>
 		<div id="app"></div>
 		<script type="module">
-			import { h, render, createVNode, Text } from './runtime-core.esm-bundler.js';
+			import { h, render, createVNode, Text, Comment, Fragment } from './runtime-core.esm-bundler.js';
 
 			// 1：基本的渲染
 			// const vnode = h('div', '内容');
@@ -16,12 +16,12 @@
 
 			// 1.1 Text
 
-			const vnode = h(Text, '111');
-			render(vnode, app);
+			// const vnode = h(Text, '111');
+			// render(vnode, app);
 
-			setTimeout(() => {
-				render(h(Text, '222'), app);
-			}, 1000);
+			// setTimeout(() => {
+			// 	render(h(Text, '222'), app);
+			// }, 1000);
 
 			// 2: props
 			// const vnode = h('div', { style: { color: 'blue' } }, '显示的内容');
@@ -248,6 +248,16 @@
 			// 		app
 			// 	);
 			// }, 1000);
+
+			// 8 comment 注释节点
+
+			// render(h(Comment, '注释节点'), app);
+
+			// 9 fragment
+			render(h(Fragment, [h(Text, 'aaa'), h(Text, 'bbb')]), app);
+			setTimeout(() => {
+				render(h(Fragment, [h(Text, 'ccc'), h(Text, 'ddd')]), app);
+			}, 1000);
 		</script>
 	</body>
 </html>
