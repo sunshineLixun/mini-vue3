@@ -10,6 +10,10 @@ function makeMap(str) {
 
 // packages/shared/src/general.ts
 var isObject = (val) => val !== null && typeof val === "object";
+var hasChanged = (value, oldValue) => !Object.is(value, oldValue);
+var isFunction = (val) => typeof val === "function";
+var NOOP = () => {
+};
 var isArray = Array.isArray;
 var isString = (val) => typeof val === "string";
 var isNoEmptyValue = (val) => val !== void 0 || val !== null;
@@ -18,6 +22,359 @@ var EMPTY_OBJ = {};
 var onRE = /^on[^a-z]/;
 var isOn = (key) => onRE.test(key);
 var isReservedProp = makeMap(",key,ref");
+
+// packages/runtime-core/src/components.ts
+var uid = 0;
+function createComponentInstance(vnode, parent) {
+  const instance = {
+    vnode,
+    parent,
+    root: null,
+    type: vnode.type,
+    uid: uid++,
+    data: EMPTY_OBJ,
+    props: EMPTY_OBJ,
+    attrs: EMPTY_OBJ,
+    slots: EMPTY_OBJ,
+    refs: EMPTY_OBJ,
+    setupState: EMPTY_OBJ,
+    ctx: EMPTY_OBJ,
+    emit: null,
+    proxy: null,
+    update: null,
+    render: null,
+    subTree: null,
+    effect: null,
+    isMounted: false
+  };
+  instance.ctx = { _: instance };
+  instance.root = parent ? parent.root : instance;
+  return instance;
+}
+function isStatefulComponent(instance) {
+  return instance.vnode.shapeFlag & 4 /* STATEFUL_COMPONENT */;
+}
+function setupComponent(instance) {
+  const isStateful = isStatefulComponent(instance);
+  const setupResult = isStateful ? setupStatefulComponent(instance) : null;
+  return setupResult;
+}
+function setupStatefulComponent(instance) {
+  const Component = instance.type;
+  const { setup } = Component;
+  if (setup) {
+    let setupResult;
+    try {
+      setupResult = setup();
+    } catch (error) {
+    }
+  } else {
+    finishComponentSetup(instance);
+  }
+}
+function finishComponentSetup(instance) {
+  const Component = instance.type;
+  if (!instance.render) {
+    instance.render = Component.render || NOOP;
+  }
+}
+
+// packages/runtime-core/src/vnode.ts
+var Fragment = Symbol.for("v-fgt");
+var Text = Symbol.for("v-txt");
+var Comment2 = Symbol.for("v-cmt");
+function isVNode(value) {
+  return value ? value.__v_isVNode === true : false;
+}
+var normalizeKey = ({ key }) => key != null ? key : null;
+var normalizeRef = ({ ref }) => {
+  if (typeof ref === "number") {
+    ref = String(ref);
+  }
+  return ref;
+};
+function createVNode(type, props = null, children = null) {
+  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : isFunction(type) ? 2 /* FUNCTIONAL_COMPONENT */ : 0;
+  return createBaseVNode(type, props, children, shapeFlag);
+}
+function createBaseVNode(type, props = null, children = null, shapeFlag = type === Fragment ? 0 : 1 /* ELEMENT */) {
+  const vnode = {
+    __v_isVNode: true,
+    type,
+    props,
+    key: props && normalizeKey(props),
+    ref: props && normalizeRef(props),
+    children,
+    el: null,
+    // 真实节点 初始化为null
+    anchor: null,
+    shapeFlag
+  };
+  if (children) {
+    vnode.shapeFlag |= isString(children) ? 8 /* TEXT_CHILDREN */ : 16 /* ARRAY_CHILDREN */;
+  }
+  return vnode;
+}
+function isSameVNodeType(n1, n2) {
+  return n1.type === n2.type && n1.key === n2.key;
+}
+function normalizeVNode(child) {
+  if (child === null || typeof child === "boolean") {
+    return createVNode(Comment2);
+  } else if (isArray(child)) {
+    return createVNode(Fragment, null, child.slice());
+  } else if (typeof child === "object") {
+    return CloneVNode(child);
+  } else {
+    return createVNode(Text, null, String(child));
+  }
+}
+function CloneVNode(vnode) {
+  return vnode;
+}
+
+// packages/runtime-core/src/componentRenderUtils.ts
+function renderComponentRoot(instance) {
+  const { type: Component, vnode, props, data, ctx, attrs, slots, emit, setupState, proxy, render: render2 } = instance;
+  const { shapeFlag } = vnode;
+  let result;
+  try {
+    if (shapeFlag & 4 /* STATEFUL_COMPONENT */) {
+      result = normalizeVNode(render2.call(proxy, props, setupState, data, ctx));
+    } else if (shapeFlag & 2 /* FUNCTIONAL_COMPONENT */) {
+      let render3 = Component;
+      result = normalizeVNode(render3.length > 1 ? render3(props, { attrs, slots, emit }) : render3(props, null));
+    }
+  } catch (error) {
+    result = createVNode(Comment);
+  }
+  return result;
+}
+
+// packages/reactivity/src/dep.ts
+var createDep = (effects) => {
+  const dep = new Set(effects);
+  return dep;
+};
+
+// packages/reactivity/src/effectScope.ts
+var activeEffectScope;
+function recordEffectScope(effect) {
+  if (activeEffectScope) {
+    (activeEffectScope.effects || (activeEffectScope.effects = [])).push(effect);
+  }
+}
+
+// packages/reactivity/src/effect.ts
+var activeEffect;
+var targetMap = /* @__PURE__ */ new WeakMap();
+var ReactiveEffect = class {
+  // scheduler记录着：proxy对象set了新的值，会触发scheduler回调，控制依赖更新时机
+  // 这里也可以认为是 proxy对象的属性发生了变化
+  constructor(fn, scheduler = null) {
+    this.fn = fn;
+    this.scheduler = scheduler;
+    // 标记当前effect是否是激活状态，如果是激活状态，会触发依赖收集
+    this.active = true;
+    // 收集当前激活的activeEffect
+    this.deps = [];
+    // 标记当前的effect
+    /**
+     * effect(() => {
+     * 	this.name e1
+     * 	 effect(() => {
+     * 			this.name  e2
+     * 	 })
+     * 	 this.name  这里必须是 e1
+     * })
+     *
+     * 第一个effect执行
+     * parent -> activeEffect -> this
+     * 函数执行完成
+     * activeEffect = this.parent
+     * parent = undefined
+     *
+     * 第二个effect执行
+     * parent -> activeEffect
+     *
+     * e1 -> e2 -> e1
+     */
+    this.parent = void 0;
+    recordEffectScope(this);
+  }
+  run() {
+    if (!this.active) {
+      return this.fn();
+    }
+    try {
+      this.parent = activeEffect;
+      activeEffect = this;
+      cleanupEffect(this);
+      return this.fn();
+    } finally {
+      activeEffect = this.parent;
+      this.parent = void 0;
+    }
+  }
+  stop() {
+    if (this.active) {
+      cleanupEffect(this);
+      this.active = false;
+    }
+  }
+};
+function track(target, key) {
+  if (activeEffect) {
+    let depsMap = targetMap.get(target);
+    if (!depsMap) {
+      targetMap.set(target, depsMap = /* @__PURE__ */ new Map());
+    }
+    let dep = depsMap.get(key);
+    if (!dep) {
+      depsMap.set(key, dep = /* @__PURE__ */ new Set());
+    }
+    trackEffects(dep);
+  }
+}
+function trackEffects(dep) {
+  let shouldTrack = !dep.has(activeEffect);
+  if (shouldTrack) {
+    dep.add(activeEffect);
+    activeEffect.deps.push(dep);
+  }
+}
+function trigger(target, key, newValue, oldValue) {
+  const depsMap = targetMap.get(target);
+  if (!depsMap) {
+    return;
+  }
+  let deps = [];
+  if (key !== void 0) {
+    deps.push(depsMap.get(key));
+  }
+  const effects = [];
+  for (const dep of deps) {
+    if (dep) {
+      effects.push(...dep);
+    }
+  }
+  triggerEffects(createDep(effects));
+}
+function triggerEffects(dep) {
+  if (dep) {
+    const effects = isArray(dep) ? dep : [...dep];
+    if (effects) {
+      effects.forEach((effect) => {
+        if (activeEffect !== effect) {
+          if (effect.scheduler) {
+            effect.scheduler();
+          } else {
+            effect.run();
+          }
+        }
+      });
+    }
+  }
+}
+function cleanupEffect(effect) {
+  const { deps } = effect;
+  if (deps.length) {
+    for (let index = 0; index < deps.length; index++) {
+      deps[index].delete(effect);
+    }
+    deps.length = 0;
+  }
+}
+
+// packages/reactivity/src/ref.ts
+function isRef(ref) {
+  return !!(ref && ref.__v_isRef === true);
+}
+
+// packages/reactivity/src/baseHandlers.ts
+var set = createSetter();
+function createSetter() {
+  return function set2(target, key, value, receiver) {
+    const oldValue = target[key];
+    const result = Reflect.set(target, key, value, receiver);
+    if (hasChanged(value, oldValue)) {
+      trigger(target, key, value, oldValue);
+    }
+    return result;
+  };
+}
+var get = createGetter(false);
+var readonlyGet = createGetter(true);
+function createGetter(isReadonly2 = false) {
+  return function get2(target, key, receiver) {
+    if (key === "__v_isReactive" /* IS_REACTIVE */) {
+      return !isReadonly2;
+    } else if (key === "__v_isReadonly" /* IS_READONLY */) {
+      return isReadonly2;
+    } else if (key === "__v_raw" /* RAW */ && receiver === (isReadonly2 ? readonlyMap : reactiveMap.get(target))) {
+      return target;
+    }
+    if (!isReadonly2) {
+      track(target, key);
+    }
+    const res = Reflect.get(target, key, receiver);
+    if (isRef(res)) {
+      return res.value;
+    }
+    if (isObject(res)) {
+      return isReadonly2 ? readonly(res) : reactive(res);
+    }
+    return res;
+  };
+}
+var mutableHandlers = {
+  set,
+  get
+};
+var readonlyHandlers = {
+  // 只读属性不能被set
+  set(target, key) {
+    console.warn(`Set operation on key "${String(key)}" failed: target is readonly.`, target);
+    return true;
+  },
+  // 只读属性不能被删除
+  deleteProperty(target, key) {
+    console.warn(`Delete operation on key "${String(key)}" failed: target is readonly.`, target);
+    return true;
+  },
+  get: readonlyGet
+};
+
+// packages/reactivity/src/reactive.ts
+var reactiveMap = /* @__PURE__ */ new WeakMap();
+var readonlyMap = /* @__PURE__ */ new WeakMap();
+var isReadonly = (value) => {
+  return !!(value && value["__v_isReadonly" /* IS_READONLY */]);
+};
+function readonly(target) {
+  return createReactiveObject(target, true, readonlyHandlers, readonlyMap);
+}
+function reactive(target) {
+  if (isReadonly(target)) {
+    return target;
+  }
+  return createReactiveObject(target, false, mutableHandlers, reactiveMap);
+}
+function createReactiveObject(target, isReadonly2, baseHandlers, proxyMap) {
+  if (!isObject(target)) {
+    return target;
+  }
+  const existingProxy = proxyMap.get(target);
+  if (existingProxy) {
+    return existingProxy;
+  }
+  if (target["__v_isReactive" /* IS_REACTIVE */] && !isReadonly2) {
+    return target;
+  }
+  const proxy = new Proxy(target, baseHandlers);
+  proxyMap.set(target, proxy);
+  return proxy;
+}
 
 // packages/runtime-core/src/renderer.ts
 function createRenderer(options) {
@@ -233,16 +590,36 @@ function baseCreateRenderer(options) {
       patchChildren(n1, n2, container, fragmentEndAnchor);
     }
   };
-  const processComponent = (n1, n2, container, anchor) => {
+  const processComponent = (n1, n2, container, anchor, parentComponent) => {
     if (n1 === null) {
+      mountComponent(n2, container, anchor, parentComponent);
     } else {
+      updateComponent();
     }
   };
-  const mountComponent = () => {
+  const setupRenderEffect = (instance, initialVNode, container, anchor) => {
+    const componentUpdateFn = () => {
+      if (!instance.isMounted) {
+        const subTree = instance.subTree = renderComponentRoot(instance);
+        patch(null, subTree, container, anchor, instance);
+        initialVNode.el = subTree.el;
+        instance.isMounted = true;
+      } else {
+      }
+    };
+    const effect = instance.effect = new ReactiveEffect(componentUpdateFn);
+    const update = instance.update = () => effect.run();
+    update.id = instance.uid;
+    update();
+  };
+  const mountComponent = (initialVNode, container, anchor, parentComponent) => {
+    const instance = createComponentInstance(initialVNode, parentComponent);
+    setupComponent(instance);
+    setupRenderEffect(instance, initialVNode, container, anchor);
   };
   const updateComponent = () => {
   };
-  const patch = (n1, n2, container, anchor = null) => {
+  const patch = (n1, n2, container, anchor = null, parentComponent) => {
     if (n1 === n2) {
       return;
     }
@@ -256,7 +633,7 @@ function baseCreateRenderer(options) {
       case Text:
         processText(n1, n2, container, anchor);
         break;
-      case Comment:
+      case Comment2:
         processComment(n1, n2, container, anchor);
         break;
       case Fragment:
@@ -266,7 +643,7 @@ function baseCreateRenderer(options) {
         if (shapeFlag & 1 /* ELEMENT */) {
           processElement(n1, n2, container, anchor);
         } else if (shapeFlag & 6 /* COMPONENT */) {
-          processComponent(n1, n2, container, anchor);
+          processComponent(n1, n2, container, anchor, parentComponent);
         }
         break;
     }
@@ -299,60 +676,6 @@ function baseCreateRenderer(options) {
   return {
     render: render2
   };
-}
-
-// packages/runtime-core/src/vnode.ts
-var Fragment = Symbol.for("v-fgt");
-var Text = Symbol.for("v-txt");
-var Comment = Symbol.for("v-cmt");
-function isVNode(value) {
-  return value ? value.__v_isVNode === true : false;
-}
-var normalizeKey = ({ key }) => key != null ? key : null;
-var normalizeRef = ({ ref }) => {
-  if (typeof ref === "number") {
-    ref = String(ref);
-  }
-  return ref;
-};
-function createVNode(type, props = null, children = null) {
-  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 6 /* COMPONENT */ : 0;
-  return createBaseVNode(type, props, children, shapeFlag);
-}
-function createBaseVNode(type, props = null, children = null, shapeFlag = type === Fragment ? 0 : 1 /* ELEMENT */) {
-  const vnode = {
-    __v_isVNode: true,
-    type,
-    props,
-    key: props && normalizeKey(props),
-    ref: props && normalizeRef(props),
-    children,
-    el: null,
-    // 真实节点 初始化为null
-    anchor: null,
-    shapeFlag
-  };
-  if (children) {
-    vnode.shapeFlag |= isString(children) ? 8 /* TEXT_CHILDREN */ : 16 /* ARRAY_CHILDREN */;
-  }
-  return vnode;
-}
-function isSameVNodeType(n1, n2) {
-  return n1.type === n2.type && n1.key === n2.key;
-}
-function normalizeVNode(child) {
-  if (child === null || typeof child === "boolean") {
-    return createVNode(Comment);
-  } else if (isArray(child)) {
-    return createVNode(Fragment, null, child.slice());
-  } else if (typeof child === "object") {
-    return CloneVNode(child);
-  } else {
-    return createVNode(Text, null, String(child));
-  }
-}
-function CloneVNode(vnode) {
-  return vnode;
 }
 
 // packages/runtime-core/src/h.ts
@@ -508,7 +831,7 @@ var render = (...args) => {
 };
 export {
   CloneVNode,
-  Comment,
+  Comment2 as Comment,
   Fragment,
   Text,
   createRenderer,

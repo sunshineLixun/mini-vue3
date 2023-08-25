@@ -1,5 +1,5 @@
 import { Ref } from '@vue/reactivity';
-import { ShapeFlags, isArray, isObject, isString } from '@vue/shared';
+import { ShapeFlags, isArray, isFunction, isObject, isString } from '@vue/shared';
 import { RendererNode } from './renderer';
 import { Component } from './components';
 
@@ -71,7 +71,7 @@ export interface VNode<HostNode = RendererNode, ExtraProps = { [key: string]: an
 	// DOM
 
 	/**
-	 * 映射的真实接单
+	 * 映射的真实节点
 	 */
 	el: HostNode | null;
 	/**
@@ -111,7 +111,13 @@ export function createVNode(
 	// eg. h('div')  h('div', { props })  h('div', { props }, children)
 	// 如果有值，一定是元素类型
 	// 如果是对象，则为组件类型
-	const shapeFlag = isString(type) ? ShapeFlags.ELEMENT : isObject(type) ? ShapeFlags.COMPONENT : 0;
+	const shapeFlag = isString(type)
+		? ShapeFlags.ELEMENT
+		: isObject(type)
+		? ShapeFlags.STATEFUL_COMPONENT
+		: isFunction(type)
+		? ShapeFlags.FUNCTIONAL_COMPONENT
+		: 0;
 
 	return createBaseVNode(type, props, children, shapeFlag);
 }

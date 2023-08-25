@@ -10,6 +10,10 @@ import {
 	Fragment
 } from '@vue/runtime-core';
 import { EMPTY_OBJ, ShapeFlags, isReservedProp } from '@vue/shared';
+import { createComponentInstance, setupComponent } from './components';
+import { ComponentInternalInstance, renderComponentRoot } from './componentRenderUtils';
+import { ReactiveEffect } from '@vue/reactivity';
+import { SchedulerJob } from './scheduler';
 
 export interface Renderer<HostElement = RendererElement> {
 	render: RootRenderFunction<HostElement>;
@@ -89,7 +93,13 @@ export type RootRenderFunction<HostElement = RendererElement> = (vnode: VNode | 
 /**
  * n1 标识已经老节点，n2标识新节点  container标识渲染跟元素
  */
-type PatchFn = (n1: VNode | null, n2: VNode, container: RendererElement, anchor?: RendererNode | null) => void;
+type PatchFn = (
+	n1: VNode | null,
+	n2: VNode,
+	container: RendererElement,
+	anchor?: RendererNode | null,
+	parentComponent?: ComponentInternalInstance | null
+) => void;
 
 type NextFn = (vnode: VNode) => RendererNode;
 
@@ -103,7 +113,8 @@ type ProcessComponentFn = (
 	n1: VNode | null,
 	n2: VNode,
 	container: RendererElement,
-	anchor: RendererNode | null
+	anchor: RendererNode | null,
+	parentComponent?: ComponentInternalInstance | null
 ) => void;
 
 type MountElementFn = (vnode: VNode, container: RendererElement, anchor: RendererNode | null) => void;
@@ -125,6 +136,13 @@ type MountChildrenFn = (
 	container: RendererElement,
 	anchor: RendererNode | null,
 	start?: number
+) => void;
+
+export type SetupRenderEffectFn = (
+	instance: ComponentInternalInstance,
+	initialVNode: VNode,
+	container: RendererElement,
+	anchor: RendererNode | null
 ) => void;
 
 export function createRenderer(options: RendererOptions) {
@@ -538,17 +556,65 @@ function baseCreateRenderer(options: RendererOptions) {
 		}
 	};
 
-	const processComponent: ProcessComponentFn = (n1, n2, container, anchor) => {
+	const processComponent: ProcessComponentFn = (n1, n2, container, anchor, parentComponent) => {
 		if (n1 === null) {
+			mountComponent(n2, container, anchor, parentComponent);
 		} else {
+			updateComponent();
 		}
 	};
 
-	const mountComponent = () => {};
+	// 重点: 组件关联effect
+	// 组装响应式数据，绑定effect
+	const setupRenderEffect: SetupRenderEffectFn = (instance, initialVNode, container, anchor) => {
+		// 默认会执行一次发方法
+		const componentUpdateFn = () => {
+			// 第一次执行
+			if (!instance.isMounted) {
+				// 1. 渲染组件内容
+				const subTree = (instance.subTree = renderComponentRoot(instance));
+				// patch children
+				patch(null, subTree, container, anchor, instance);
 
+				// 保存真实dom节点
+				initialVNode.el = subTree.el;
+
+				// 2. 挂载组件成功
+				instance.isMounted = true;
+			} else {
+				// 当组件内部的响应式数据发生变化时，执行
+			}
+		};
+		// 重点: 创建effect
+		const effect = (instance.effect = new ReactiveEffect(componentUpdateFn));
+
+		const update: SchedulerJob = (instance.update = () => effect.run());
+
+		// 标记下job id 跟组件uid关联
+		update.id = instance.uid;
+
+		// 默认执行一次
+		update();
+	};
+
+	// 初次挂载组件
+	const mountComponent = (
+		initialVNode: VNode,
+		container: RendererElement,
+		anchor: RendererNode | null,
+		parentComponent: ComponentInternalInstance
+	) => {
+		const instance = createComponentInstance(initialVNode, parentComponent);
+
+		setupComponent(instance);
+
+		setupRenderEffect(instance, initialVNode, container, anchor);
+	};
+
+	// 组件的props变更导致组件更新
 	const updateComponent = () => {};
 
-	const patch: PatchFn = (n1, n2, container, anchor = null) => {
+	const patch: PatchFn = (n1, n2, container, anchor = null, parentComponent) => {
 		// 相同的节点，直接返回
 		if (n1 === n2) {
 			return;
@@ -583,7 +649,7 @@ function baseCreateRenderer(options: RendererOptions) {
 					processElement(n1, n2, container, anchor);
 				} else if (shapeFlag & ShapeFlags.COMPONENT) {
 					// 组件
-					processComponent(n1, n2, container, anchor);
+					processComponent(n1, n2, container, anchor, parentComponent);
 				}
 				break;
 		}
