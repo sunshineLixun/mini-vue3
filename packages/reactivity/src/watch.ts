@@ -3,6 +3,7 @@ import { ComputedRef } from './computed';
 import { ReactiveEffect } from './effect';
 import { isReactive } from './reactive';
 import { Ref, isRef } from './ref';
+import { callWithErrorHandling } from 'packages/runtime-core/src/errorHandling';
 
 const INITIAL_WATCHER_VALUE = {};
 
@@ -66,11 +67,7 @@ function doWatch(
 				} else if (isReactive(s)) {
 					return traverse(s);
 				} else if (isFunction(s)) {
-					let res: any;
-					try {
-						res = s();
-					} catch {}
-					return res;
+					return callWithErrorHandling(s);
 				}
 			});
 	} else if (isFunction(source)) {

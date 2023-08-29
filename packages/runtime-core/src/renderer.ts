@@ -583,10 +583,13 @@ function baseCreateRenderer(options: RendererOptions) {
 				instance.isMounted = true;
 			} else {
 				// 当组件内部的响应式数据发生变化时，执行
+				console.log('update');
 			}
 		};
 		// 重点: 创建effect
-		const effect = (instance.effect = new ReactiveEffect(componentUpdateFn, () => {}));
+		const effect = (instance.effect = new ReactiveEffect(componentUpdateFn, () => {
+			console.log(111);
+		}));
 
 		const update: SchedulerJob = (instance.update = () => effect.run());
 

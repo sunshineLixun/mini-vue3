@@ -11,27 +11,7 @@ const enum AccessTypes {
 
 export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
 	get({ _: instance }: ComponentRenderContext, key: string) {
-		let data = instance.data;
-		const { accessCache, type } = instance;
-
-		// 这里跟源码不一致，做了简化处理，兼容下vue2写法
-		/**
-		 *
-		 * const component = {
-		 * 		data() {
-		 * 			return {name: 'vue'}
-		 * 	  },
-		 *
-		 * 		render() {
-		 * 			return h('div', `${this.name}`)
-		 * 		}
-		 *
-		 * }
-		 *
-		 */
-		if (type.data && isFunction(type.data)) {
-			data = type.data();
-		}
+		const { accessCache, type, data } = instance;
 
 		// 获取data函数中的值
 		if (data !== EMPTY_OBJ && hasOwn(data, key)) {
@@ -39,5 +19,9 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
 			accessCache[key] = AccessTypes.DATA;
 			return data[key];
 		}
+	},
+	set(target, key, newValue, receiver) {
+		console.log(key);
+		return true;
 	}
 };

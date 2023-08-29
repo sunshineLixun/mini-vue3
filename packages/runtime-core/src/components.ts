@@ -5,6 +5,7 @@ import { ComponentInternalInstance, InternalRenderFunction } from './componentRe
 import { VNode } from './vnode';
 import { callWithErrorHandling } from './errorHandling';
 import { PublicInstanceProxyHandlers } from './componentPublicInstance';
+import { shallowReactive } from '@vue/reactivity';
 
 export type Component = any;
 
@@ -72,11 +73,10 @@ export function setupComponent(instance: ComponentInternalInstance) {
 
 export function setupStatefulComponent(instance: ComponentInternalInstance) {
 	const Component = instance.type;
-
-	instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers);
-
 	// vue3 setup
 	const { setup } = Component;
+
+	instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers);
 
 	if (setup) {
 		const setupResult = callWithErrorHandling(setup);
@@ -85,18 +85,37 @@ export function setupStatefulComponent(instance: ComponentInternalInstance) {
 
 		// 先不考虑async setup
 	} else {
+		if (Component.data && isFunction(Component.data)) {
+			// 简易的支持下vue2写法
+			instance.data = shallowReactive(Component.data.call(instance.proxy));
+		}
+
 		finishComponentSetup(instance);
 	}
 }
 
 // 处理setup 返回的值
 export function handleSetupResult(instance: ComponentInternalInstance, setupResult: unknown) {
-	// functional component
 	if (isFunction(setupResult)) {
+		// setup可以返回一个h函数
+		/**
+		 * const Com = {
+		 * 	setup() {
+		 * 		return () => h('div')
+		 * 	}
+		 * }
+		 */
 		instance.render = setupResult as InternalRenderFunction;
 	} else if (isObject(setupResult)) {
-		// setup函数返回的是普通对象 {}
-		// TODO:
+		// setup函数也返回的是普通对象 {}
+		/**
+		 * setup() {
+		 * 	const count = ref(0)
+		 * 	return {
+		 * 		count
+		 * 	}
+		 * }
+		 */
 	}
 	finishComponentSetup(instance);
 }

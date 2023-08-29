@@ -71,6 +71,7 @@ export interface ComponentInternalInstance {
 	// 其实就是当前组件 this
 	proxy: ComponentPublicInstance | null;
 
+	// setup函数返回的数据
 	setupState: Data;
 
 	ctx: Data;

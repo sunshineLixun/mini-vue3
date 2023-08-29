@@ -10,20 +10,40 @@
 		<script type="module">
 			// import { h, render } from '../../../node_modules/vue/dist/vue.esm-browser.js';
 			import { h, render } from './runtime-core.esm-bundler.js';
+			import { reactive } from '../../reactivity/dist/reactivity.esm-bundler.js';
 
 			// 1. data
-			const ParentComponent = {
-				data() {
-					return {
-						name: '我是父组件'
+			// const ParentComponent = {
+			// 	data() {
+			// 		return {
+			// 			name: '当前年龄',
+			// 			age: 1
+			// 		};
+			// 	},
+			// 	render() {
+			// 		function onClick() {
+			// 			this.age++;
+			// 		}
+			// 		return h('div', [h('button', { onClick: onClick.bind(this) }, `${this.name}+${this.age}`)]);
+			// 	}
+			// };
+			// render(h(ParentComponent), app);
+
+			// 2. setup
+			const Com = {
+				setup() {
+					const state = reactive({
+						name: '当前年龄',
+						age: 1
+					});
+					const onClick = () => {
+						state.age++;
 					};
-				},
-				render() {
-					return h('div', `${this.name}`);
+					return () => h('div', [h('button', { onClick }, `${state.name}+${state.age}`)]);
 				}
 			};
 
-			render(h(ParentComponent), app);
+			render(h(Com), app);
 		</script>
 	</body>
 </html>

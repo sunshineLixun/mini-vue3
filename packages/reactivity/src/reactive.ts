@@ -1,5 +1,5 @@
 import { isObject } from '@vue/shared';
-import { mutableHandlers, readonlyHandlers } from './baseHandlers';
+import { mutableHandlers, readonlyHandlers, shallowReactiveHandlers } from './baseHandlers';
 
 export const enum ReactiveFlags {
 	SKIP = '__v_skip',
@@ -19,6 +19,7 @@ export interface Target {
 
 export const reactiveMap = new WeakMap<Target, any>();
 export const readonlyMap = new WeakMap<Target, any>();
+export const shallowReactiveMap = new WeakMap<Target, any>();
 
 export const isReadonly = (value: unknown) => {
 	// 属性访问 触发 readonlyHandlers.get 方法，其内部判断了key === ReactiveFlags.IS_READONLY
@@ -65,6 +66,10 @@ export function reactive<T extends object>(target: T) {
 	}
 
 	return createReactiveObject(target, false, mutableHandlers, reactiveMap);
+}
+
+export function shallowReactive(target: object) {
+	return createReactiveObject(target, false, shallowReactiveHandlers, shallowReactiveMap);
 }
 
 export function createReactiveObject(

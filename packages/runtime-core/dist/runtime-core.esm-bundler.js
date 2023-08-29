@@ -38,151 +38,17 @@ function callWithErrorHandling(fn, args) {
 // packages/runtime-core/src/componentPublicInstance.ts
 var PublicInstanceProxyHandlers = {
   get({ _: instance }, key) {
-    let data = instance.data;
-    const { accessCache, type } = instance;
-    if (type.data && isFunction(type.data)) {
-      data = type.data();
-    }
+    const { accessCache, type, data } = instance;
     if (data !== EMPTY_OBJ && hasOwn(data, key)) {
       accessCache[key] = 2 /* DATA */;
       return data[key];
     }
+  },
+  set(target, key, newValue, receiver) {
+    console.log(key);
+    return true;
   }
 };
-
-// packages/runtime-core/src/components.ts
-var uid = 0;
-function createComponentInstance(vnode, parent) {
-  const instance = {
-    vnode,
-    parent,
-    root: null,
-    type: vnode.type,
-    uid: uid++,
-    data: EMPTY_OBJ,
-    props: EMPTY_OBJ,
-    attrs: EMPTY_OBJ,
-    slots: EMPTY_OBJ,
-    refs: EMPTY_OBJ,
-    setupState: EMPTY_OBJ,
-    ctx: EMPTY_OBJ,
-    accessCache: EMPTY_OBJ,
-    emit: null,
-    proxy: null,
-    update: null,
-    render: null,
-    subTree: null,
-    effect: null,
-    isMounted: false
-  };
-  instance.ctx = { _: instance };
-  instance.root = parent ? parent.root : instance;
-  return instance;
-}
-function isStatefulComponent(instance) {
-  return instance.vnode.shapeFlag & 4 /* STATEFUL_COMPONENT */;
-}
-function setupComponent(instance) {
-  const isStateful = isStatefulComponent(instance);
-  const setupResult = isStateful ? setupStatefulComponent(instance) : null;
-  return setupResult;
-}
-function setupStatefulComponent(instance) {
-  const Component = instance.type;
-  instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers);
-  const { setup } = Component;
-  if (setup) {
-    const setupResult = callWithErrorHandling(setup);
-    handleSetupResult(instance, setupResult);
-  } else {
-    finishComponentSetup(instance);
-  }
-}
-function handleSetupResult(instance, setupResult) {
-  if (isFunction(setupResult)) {
-    instance.render = setupResult;
-  } else if (isObject(setupResult)) {
-  }
-  finishComponentSetup(instance);
-}
-function finishComponentSetup(instance) {
-  const Component = instance.type;
-  if (!instance.render) {
-    instance.render = Component.render || NOOP;
-  }
-}
-
-// packages/runtime-core/src/vnode.ts
-var Fragment = Symbol.for("v-fgt");
-var Text = Symbol.for("v-txt");
-var Comment2 = Symbol.for("v-cmt");
-function isVNode(value) {
-  return value ? value.__v_isVNode === true : false;
-}
-var normalizeKey = ({ key }) => key != null ? key : null;
-var normalizeRef = ({ ref }) => {
-  if (typeof ref === "number") {
-    ref = String(ref);
-  }
-  return ref;
-};
-function createVNode(type, props = null, children = null) {
-  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : isFunction(type) ? 2 /* FUNCTIONAL_COMPONENT */ : 0;
-  return createBaseVNode(type, props, children, shapeFlag);
-}
-function createBaseVNode(type, props = null, children = null, shapeFlag = type === Fragment ? 0 : 1 /* ELEMENT */) {
-  const vnode = {
-    __v_isVNode: true,
-    type,
-    props,
-    key: props && normalizeKey(props),
-    ref: props && normalizeRef(props),
-    children,
-    el: null,
-    // 真实节点 初始化为null
-    anchor: null,
-    shapeFlag
-  };
-  if (children) {
-    vnode.shapeFlag |= isString(children) ? 8 /* TEXT_CHILDREN */ : 16 /* ARRAY_CHILDREN */;
-  }
-  return vnode;
-}
-function isSameVNodeType(n1, n2) {
-  return n1.type === n2.type && n1.key === n2.key;
-}
-function normalizeVNode(child) {
-  if (child === null || typeof child === "boolean") {
-    return createVNode(Comment2);
-  } else if (isArray(child)) {
-    return createVNode(Fragment, null, child.slice());
-  } else if (typeof child === "object") {
-    return CloneVNode(child);
-  } else {
-    return createVNode(Text, null, String(child));
-  }
-}
-function CloneVNode(vnode) {
-  return vnode;
-}
-
-// packages/runtime-core/src/componentRenderUtils.ts
-function renderComponentRoot(instance) {
-  const { type: Component, vnode, props, data, ctx, attrs, slots, emit, setupState, proxy, render: render2 } = instance;
-  const { shapeFlag } = vnode;
-  let result;
-  try {
-    if (shapeFlag & 4 /* STATEFUL_COMPONENT */) {
-      result = normalizeVNode(render2.call(proxy, props, setupState, data, ctx));
-    } else if (shapeFlag & 2 /* FUNCTIONAL_COMPONENT */) {
-      let render3 = Component;
-      result = normalizeVNode(render3.length > 1 ? render3(props, { attrs, slots, emit }) : render3(props, null));
-    }
-  } catch (error) {
-    result = createVNode(Comment);
-  }
-  return result;
-}
 
 // packages/reactivity/src/dep.ts
 var createDep = (effects) => {
@@ -336,21 +202,25 @@ function createSetter() {
     return result;
   };
 }
-var get = createGetter(false);
-var readonlyGet = createGetter(true);
-function createGetter(isReadonly2 = false) {
+var get = createGetter(false, false);
+var readonlyGet = createGetter(true, false);
+var shallowReactiveGet = createGetter(false, true);
+function createGetter(isReadonly2 = false, shallow = false) {
   return function get2(target, key, receiver) {
     if (key === "__v_isReactive" /* IS_REACTIVE */) {
       return !isReadonly2;
     } else if (key === "__v_isReadonly" /* IS_READONLY */) {
       return isReadonly2;
-    } else if (key === "__v_raw" /* RAW */ && receiver === (isReadonly2 ? readonlyMap : reactiveMap.get(target))) {
+    } else if (key === "__v_raw" /* RAW */ && receiver === (isReadonly2 ? readonlyMap : shallow ? shallowReactiveMap : reactiveMap).get(target)) {
       return target;
     }
+    const res = Reflect.get(target, key, receiver);
     if (!isReadonly2) {
       track(target, key);
     }
-    const res = Reflect.get(target, key, receiver);
+    if (shallow) {
+      return res;
+    }
     if (isRef(res)) {
       return res.value;
     }
@@ -363,6 +233,10 @@ function createGetter(isReadonly2 = false) {
 var mutableHandlers = {
   set,
   get
+};
+var shallowReactiveHandlers = {
+  set,
+  get: shallowReactiveGet
 };
 var readonlyHandlers = {
   // 只读属性不能被set
@@ -381,6 +255,7 @@ var readonlyHandlers = {
 // packages/reactivity/src/reactive.ts
 var reactiveMap = /* @__PURE__ */ new WeakMap();
 var readonlyMap = /* @__PURE__ */ new WeakMap();
+var shallowReactiveMap = /* @__PURE__ */ new WeakMap();
 var isReadonly = (value) => {
   return !!(value && value["__v_isReadonly" /* IS_READONLY */]);
 };
@@ -392,6 +267,9 @@ function reactive(target) {
     return target;
   }
   return createReactiveObject(target, false, mutableHandlers, reactiveMap);
+}
+function shallowReactive(target) {
+  return createReactiveObject(target, false, shallowReactiveHandlers, shallowReactiveMap);
 }
 function createReactiveObject(target, isReadonly2, baseHandlers, proxyMap) {
   if (!isObject(target)) {
@@ -407,6 +285,143 @@ function createReactiveObject(target, isReadonly2, baseHandlers, proxyMap) {
   const proxy = new Proxy(target, baseHandlers);
   proxyMap.set(target, proxy);
   return proxy;
+}
+
+// packages/runtime-core/src/components.ts
+var uid = 0;
+function createComponentInstance(vnode, parent) {
+  const instance = {
+    vnode,
+    parent,
+    root: null,
+    type: vnode.type,
+    uid: uid++,
+    data: EMPTY_OBJ,
+    props: EMPTY_OBJ,
+    attrs: EMPTY_OBJ,
+    slots: EMPTY_OBJ,
+    refs: EMPTY_OBJ,
+    setupState: EMPTY_OBJ,
+    ctx: EMPTY_OBJ,
+    accessCache: EMPTY_OBJ,
+    emit: null,
+    proxy: null,
+    update: null,
+    render: null,
+    subTree: null,
+    effect: null,
+    isMounted: false
+  };
+  instance.ctx = { _: instance };
+  instance.root = parent ? parent.root : instance;
+  return instance;
+}
+function isStatefulComponent(instance) {
+  return instance.vnode.shapeFlag & 4 /* STATEFUL_COMPONENT */;
+}
+function setupComponent(instance) {
+  const isStateful = isStatefulComponent(instance);
+  const setupResult = isStateful ? setupStatefulComponent(instance) : null;
+  return setupResult;
+}
+function setupStatefulComponent(instance) {
+  const Component = instance.type;
+  const { setup } = Component;
+  instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers);
+  if (setup) {
+    const setupResult = callWithErrorHandling(setup);
+    handleSetupResult(instance, setupResult);
+  } else {
+    if (Component.data && isFunction(Component.data)) {
+      instance.data = shallowReactive(Component.data.call(instance.proxy));
+    }
+    finishComponentSetup(instance);
+  }
+}
+function handleSetupResult(instance, setupResult) {
+  if (isFunction(setupResult)) {
+    instance.render = setupResult;
+  } else if (isObject(setupResult)) {
+  }
+  finishComponentSetup(instance);
+}
+function finishComponentSetup(instance) {
+  const Component = instance.type;
+  if (!instance.render) {
+    instance.render = Component.render || NOOP;
+  }
+}
+
+// packages/runtime-core/src/vnode.ts
+var Fragment = Symbol.for("v-fgt");
+var Text = Symbol.for("v-txt");
+var Comment2 = Symbol.for("v-cmt");
+function isVNode(value) {
+  return value ? value.__v_isVNode === true : false;
+}
+var normalizeKey = ({ key }) => key != null ? key : null;
+var normalizeRef = ({ ref }) => {
+  if (typeof ref === "number") {
+    ref = String(ref);
+  }
+  return ref;
+};
+function createVNode(type, props = null, children = null) {
+  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : isFunction(type) ? 2 /* FUNCTIONAL_COMPONENT */ : 0;
+  return createBaseVNode(type, props, children, shapeFlag);
+}
+function createBaseVNode(type, props = null, children = null, shapeFlag = type === Fragment ? 0 : 1 /* ELEMENT */) {
+  const vnode = {
+    __v_isVNode: true,
+    type,
+    props,
+    key: props && normalizeKey(props),
+    ref: props && normalizeRef(props),
+    children,
+    el: null,
+    // 真实节点 初始化为null
+    anchor: null,
+    shapeFlag
+  };
+  if (children) {
+    vnode.shapeFlag |= isString(children) ? 8 /* TEXT_CHILDREN */ : 16 /* ARRAY_CHILDREN */;
+  }
+  return vnode;
+}
+function isSameVNodeType(n1, n2) {
+  return n1.type === n2.type && n1.key === n2.key;
+}
+function normalizeVNode(child) {
+  if (child === null || typeof child === "boolean") {
+    return createVNode(Comment2);
+  } else if (isArray(child)) {
+    return createVNode(Fragment, null, child.slice());
+  } else if (typeof child === "object") {
+    return CloneVNode(child);
+  } else {
+    return createVNode(Text, null, String(child));
+  }
+}
+function CloneVNode(vnode) {
+  return vnode;
+}
+
+// packages/runtime-core/src/componentRenderUtils.ts
+function renderComponentRoot(instance) {
+  const { type: Component, vnode, props, data, ctx, attrs, slots, emit, setupState, proxy, render: render2 } = instance;
+  const { shapeFlag } = vnode;
+  let result;
+  try {
+    if (shapeFlag & 4 /* STATEFUL_COMPONENT */) {
+      result = normalizeVNode(render2.call(proxy, props, setupState, data, ctx));
+    } else if (shapeFlag & 2 /* FUNCTIONAL_COMPONENT */) {
+      let render3 = Component;
+      result = normalizeVNode(render3.length > 1 ? render3(props, { attrs, slots, emit }) : render3(props, null));
+    }
+  } catch (error) {
+    result = createVNode(Comment);
+  }
+  return result;
 }
 
 // packages/runtime-core/src/renderer.ts
@@ -638,9 +653,11 @@ function baseCreateRenderer(options) {
         initialVNode.el = subTree.el;
         instance.isMounted = true;
       } else {
+        console.log("update");
       }
     };
     const effect = instance.effect = new ReactiveEffect(componentUpdateFn, () => {
+      console.log(111);
     });
     const update = instance.update = () => effect.run();
     update.id = instance.uid;
