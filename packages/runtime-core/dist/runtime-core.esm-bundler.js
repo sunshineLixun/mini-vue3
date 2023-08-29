@@ -22,6 +22,33 @@ var EMPTY_OBJ = {};
 var onRE = /^on[^a-z]/;
 var isOn = (key) => onRE.test(key);
 var isReservedProp = makeMap(",key,ref");
+var hasOwn = (val, key) => Object.prototype.hasOwnProperty.call(val, key);
+
+// packages/runtime-core/src/errorHandling.ts
+function callWithErrorHandling(fn, args) {
+  let res;
+  try {
+    res = args ? fn(...args) : fn();
+  } catch (err) {
+    console.log(err);
+  }
+  return res;
+}
+
+// packages/runtime-core/src/componentPublicInstance.ts
+var PublicInstanceProxyHandlers = {
+  get({ _: instance }, key) {
+    let data = instance.data;
+    const { accessCache, type } = instance;
+    if (type.data && isFunction(type.data)) {
+      data = type.data();
+    }
+    if (data !== EMPTY_OBJ && hasOwn(data, key)) {
+      accessCache[key] = 2 /* DATA */;
+      return data[key];
+    }
+  }
+};
 
 // packages/runtime-core/src/components.ts
 var uid = 0;
@@ -39,6 +66,7 @@ function createComponentInstance(vnode, parent) {
     refs: EMPTY_OBJ,
     setupState: EMPTY_OBJ,
     ctx: EMPTY_OBJ,
+    accessCache: EMPTY_OBJ,
     emit: null,
     proxy: null,
     update: null,
@@ -61,16 +89,21 @@ function setupComponent(instance) {
 }
 function setupStatefulComponent(instance) {
   const Component = instance.type;
+  instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers);
   const { setup } = Component;
   if (setup) {
-    let setupResult;
-    try {
-      setupResult = setup();
-    } catch (error) {
-    }
+    const setupResult = callWithErrorHandling(setup);
+    handleSetupResult(instance, setupResult);
   } else {
     finishComponentSetup(instance);
   }
+}
+function handleSetupResult(instance, setupResult) {
+  if (isFunction(setupResult)) {
+    instance.render = setupResult;
+  } else if (isObject(setupResult)) {
+  }
+  finishComponentSetup(instance);
 }
 function finishComponentSetup(instance) {
   const Component = instance.type;
@@ -607,7 +640,8 @@ function baseCreateRenderer(options) {
       } else {
       }
     };
-    const effect = instance.effect = new ReactiveEffect(componentUpdateFn);
+    const effect = instance.effect = new ReactiveEffect(componentUpdateFn, () => {
+    });
     const update = instance.update = () => effect.run();
     update.id = instance.uid;
     update();
@@ -669,7 +703,7 @@ function baseCreateRenderer(options) {
         unmount(container._vnode);
       }
     } else {
-      patch(container._vnode || null, vnode, container, null);
+      patch(container._vnode || null, vnode, container, null, null);
     }
     container._vnode = vnode;
   };

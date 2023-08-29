@@ -63,6 +63,9 @@ export interface ComponentInternalInstance {
 	attrs: Data;
 	slots: any;
 	refs: Data;
+
+	// 缓存
+	accessCache: Data | null;
 	emit: () => void;
 
 	// 其实就是当前组件 this
@@ -100,6 +103,7 @@ export function renderComponentRoot(instance: ComponentInternalInstance): VNode 
 		if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
 			// 执行组件的render函数，拿到vnode，
 			// 同时绑定响应式数据，因为在模板中会访问this、props、state等响应式数据
+
 			result = normalizeVNode(render!.call(proxy, props, setupState, data, ctx));
 		} else if (shapeFlag & ShapeFlags.FUNCTIONAL_COMPONENT) {
 			// 函数组件

@@ -3,8 +3,14 @@
 import { EMPTY_OBJ, NOOP, ShapeFlags, isFunction, isObject } from '@vue/shared';
 import { ComponentInternalInstance, InternalRenderFunction } from './componentRenderUtils';
 import { VNode } from './vnode';
+import { callWithErrorHandling } from './errorHandling';
+import { PublicInstanceProxyHandlers } from './componentPublicInstance';
 
 export type Component = any;
+
+export interface ComponentRenderContext {
+	_: ComponentInternalInstance;
+}
 
 // 自增的组件标识符
 let uid = 0;
@@ -28,6 +34,8 @@ export function createComponentInstance(
 		refs: EMPTY_OBJ,
 		setupState: EMPTY_OBJ,
 		ctx: EMPTY_OBJ,
+
+		accessCache: EMPTY_OBJ,
 
 		emit: null,
 
@@ -65,17 +73,15 @@ export function setupComponent(instance: ComponentInternalInstance) {
 export function setupStatefulComponent(instance: ComponentInternalInstance) {
 	const Component = instance.type;
 
-	// TODO: instance.proxy
+	instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers);
 
+	// vue3 setup
 	const { setup } = Component;
 
 	if (setup) {
-		//TODO: error handle
-		let setupResult;
+		const setupResult = callWithErrorHandling(setup);
 
-		try {
-			setupResult = setup();
-		} catch (error) {}
+		handleSetupResult(instance, setupResult);
 
 		// 先不考虑async setup
 	} else {
@@ -86,7 +92,6 @@ export function setupStatefulComponent(instance: ComponentInternalInstance) {
 // 处理setup 返回的值
 export function handleSetupResult(instance: ComponentInternalInstance, setupResult: unknown) {
 	// functional component
-
 	if (isFunction(setupResult)) {
 		instance.render = setupResult as InternalRenderFunction;
 	} else if (isObject(setupResult)) {

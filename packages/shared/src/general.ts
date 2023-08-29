@@ -34,3 +34,6 @@ export const isOn = (key: string) => onRE.test(key);
 // 下面这些key是vue内部保留的关键字，元素自定义属性props一般不允许用下面的key, 空字符串也算
 // ["", "key", "ref"]
 export const isReservedProp = makeMap(',key,ref');
+
+export const hasOwn = (val: object, key: string): key is keyof typeof val =>
+	Object.prototype.hasOwnProperty.call(val, key);

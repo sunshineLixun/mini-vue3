@@ -20,5 +20,8 @@
     "minimist": "^1.2.8",
     "typescript": "^5.1.3",
     "vitest": "^0.33.0"
+  },
+  "dependencies": {
+    "vue": "^3.3.4"
   }
 }

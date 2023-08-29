@@ -586,7 +586,7 @@ function baseCreateRenderer(options: RendererOptions) {
 			}
 		};
 		// 重点: 创建effect
-		const effect = (instance.effect = new ReactiveEffect(componentUpdateFn));
+		const effect = (instance.effect = new ReactiveEffect(componentUpdateFn, () => {}));
 
 		const update: SchedulerJob = (instance.update = () => effect.run());
 
@@ -685,7 +685,7 @@ function baseCreateRenderer(options: RendererOptions) {
 				unmount(container._vnode);
 			}
 		} else {
-			patch(container._vnode || null, vnode, container, null);
+			patch(container._vnode || null, vnode, container, null, null);
 		}
 		// 保存老节点
 		container._vnode = vnode;
