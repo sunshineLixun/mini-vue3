@@ -3,17 +3,10 @@ import { VNode, VNodeChild, createVNode, normalizeVNode } from './vnode';
 import { SchedulerJob } from './scheduler';
 import { ShapeFlags } from '@vue/shared';
 
-export type Data = Record<string, unknown>;
+export type Data = Record<string, any>;
 
 export type InternalRenderFunction = {
-	(
-		ctx: ComponentPublicInstance,
-
-		$props: ComponentInternalInstance['props'],
-		$setup: ComponentInternalInstance['setupState'],
-		$data: ComponentInternalInstance['data'],
-		$options: ComponentInternalInstance['ctx']
-	): VNodeChild;
+	($props: ComponentInternalInstance['props'], $data: ComponentInternalInstance['data']): VNodeChild;
 };
 
 // 组件外部实例 -> 用户可以直接使用的属性
@@ -71,10 +64,7 @@ export interface ComponentInternalInstance {
 	// 其实就是当前组件 this
 	proxy: ComponentPublicInstance | null;
 
-	// setup函数返回的数据
-	setupState: Data;
-
-	ctx: Data;
+	// ctx: Data;
 
 	render: InternalRenderFunction | null;
 
@@ -96,7 +86,7 @@ export interface ComponentInternalInstance {
 }
 
 export function renderComponentRoot(instance: ComponentInternalInstance): VNode {
-	const { type: Component, vnode, props, data, ctx, attrs, slots, emit, setupState, proxy, render } = instance;
+	const { type: Component, vnode, props, data, attrs, slots, emit, proxy, render } = instance;
 	const { shapeFlag } = vnode;
 	// 判断是状态组件还是函数组件
 	let result: VNode;
@@ -105,7 +95,7 @@ export function renderComponentRoot(instance: ComponentInternalInstance): VNode 
 			// 执行组件的render函数，拿到vnode，
 			// 同时绑定响应式数据，因为在模板中会访问this、props、state等响应式数据
 
-			result = normalizeVNode(render!.call(proxy, props, setupState, data, ctx));
+			result = normalizeVNode(render!.call(proxy, data, props));
 		} else if (shapeFlag & ShapeFlags.FUNCTIONAL_COMPONENT) {
 			// 函数组件
 			let render = Component;

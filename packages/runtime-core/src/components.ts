@@ -33,8 +33,8 @@ export function createComponentInstance(
 		attrs: EMPTY_OBJ,
 		slots: EMPTY_OBJ,
 		refs: EMPTY_OBJ,
-		setupState: EMPTY_OBJ,
-		ctx: EMPTY_OBJ,
+
+		// ctx: EMPTY_OBJ,
 
 		accessCache: EMPTY_OBJ,
 
@@ -52,7 +52,7 @@ export function createComponentInstance(
 		isMounted: false
 	};
 
-	instance.ctx = { _: instance };
+	// instance.ctx = createDevRenderContext(instance);
 	instance.root = parent ? parent.root : instance;
 
 	return instance;
@@ -76,9 +76,8 @@ export function setupStatefulComponent(instance: ComponentInternalInstance) {
 	// vue3 setup
 	const { setup } = Component;
 
-	instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers);
-
 	if (setup) {
+		instance.proxy = new Proxy(instance, PublicInstanceProxyHandlers);
 		const setupResult = callWithErrorHandling(setup);
 
 		handleSetupResult(instance, setupResult);
@@ -87,7 +86,7 @@ export function setupStatefulComponent(instance: ComponentInternalInstance) {
 	} else {
 		if (Component.data && isFunction(Component.data)) {
 			// 简易的支持下vue2写法
-			instance.data = shallowReactive(Component.data.call(instance.proxy));
+			instance.proxy = shallowReactive(Component.data.call(instance.proxy));
 		}
 
 		finishComponentSetup(instance);
@@ -122,9 +121,9 @@ export function handleSetupResult(instance: ComponentInternalInstance, setupResu
 
 // 专门处理render
 export function finishComponentSetup(instance: ComponentInternalInstance) {
-	const Component = instance.type;
 	// 处理render
 	if (!instance.render) {
+		const Component = instance.type;
 		// 拿到render函数
 		instance.render = (Component.render || NOOP) as InternalRenderFunction;
 	}

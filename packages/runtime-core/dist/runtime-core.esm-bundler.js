@@ -36,16 +36,46 @@ function callWithErrorHandling(fn, args) {
 }
 
 // packages/runtime-core/src/componentPublicInstance.ts
+var publicPropertiesMap = /* @__PURE__ */ extend(/* @__PURE__ */ Object.create(null), {
+  // 列举几个常用的的 属性
+  $: (i) => i,
+  $el: (i) => i.vnode.el,
+  $data: (i) => i.data,
+  $props: (i) => i.props,
+  $attrs: (i) => i.attrs,
+  $slots: (i) => i.slots,
+  $refs: (i) => i.refs,
+  $emit: (i) => i.emit,
+  $options: (i) => i.type,
+  // $forceUpdate: i => i.f || (i.f = () => queueJob(i.update)),
+  // $nextTick: i => i.n || (i.n = nextTick.bind(i.proxy!)),
+  $watch: () => NOOP
+});
 var PublicInstanceProxyHandlers = {
   get({ _: instance }, key) {
-    const { accessCache, type, data } = instance;
-    if (data !== EMPTY_OBJ && hasOwn(data, key)) {
-      accessCache[key] = 2 /* DATA */;
-      return data[key];
+    const { accessCache, data, props } = instance;
+    if (key[0] !== "$") {
+      if (data !== EMPTY_OBJ && hasOwn(data, key)) {
+        accessCache[key] = 2 /* DATA */;
+        return data[key];
+      } else if (props !== EMPTY_OBJ && hasOwn(props, key)) {
+        return props[key];
+      }
+    }
+    const publicGetter = publicPropertiesMap[key];
+    if (publicGetter) {
+      return publicGetter(instance);
     }
   },
-  set(target, key, newValue, receiver) {
-    console.log(key);
+  set({ _: instance }, key, newValue) {
+    const { data, props } = instance;
+    if (data !== EMPTY_OBJ && hasOwn(data, key)) {
+      data[key] = newValue;
+      return true;
+    } else if (hasOwn(props, key)) {
+      console.warn("props is readonly");
+      return false;
+    }
     return true;
   }
 };
@@ -301,8 +331,7 @@ function createComponentInstance(vnode, parent) {
     attrs: EMPTY_OBJ,
     slots: EMPTY_OBJ,
     refs: EMPTY_OBJ,
-    setupState: EMPTY_OBJ,
-    ctx: EMPTY_OBJ,
+    // ctx: EMPTY_OBJ,
     accessCache: EMPTY_OBJ,
     emit: null,
     proxy: null,
@@ -312,7 +341,6 @@ function createComponentInstance(vnode, parent) {
     effect: null,
     isMounted: false
   };
-  instance.ctx = { _: instance };
   instance.root = parent ? parent.root : instance;
   return instance;
 }
@@ -327,13 +355,13 @@ function setupComponent(instance) {
 function setupStatefulComponent(instance) {
   const Component = instance.type;
   const { setup } = Component;
-  instance.proxy = new Proxy(instance.ctx, PublicInstanceProxyHandlers);
   if (setup) {
+    instance.proxy = new Proxy(instance, PublicInstanceProxyHandlers);
     const setupResult = callWithErrorHandling(setup);
     handleSetupResult(instance, setupResult);
   } else {
     if (Component.data && isFunction(Component.data)) {
-      instance.data = shallowReactive(Component.data.call(instance.proxy));
+      instance.proxy = shallowReactive(Component.data.call(instance.proxy));
     }
     finishComponentSetup(instance);
   }
@@ -346,8 +374,8 @@ function handleSetupResult(instance, setupResult) {
   finishComponentSetup(instance);
 }
 function finishComponentSetup(instance) {
-  const Component = instance.type;
   if (!instance.render) {
+    const Component = instance.type;
     instance.render = Component.render || NOOP;
   }
 }
@@ -408,12 +436,12 @@ function CloneVNode(vnode) {
 
 // packages/runtime-core/src/componentRenderUtils.ts
 function renderComponentRoot(instance) {
-  const { type: Component, vnode, props, data, ctx, attrs, slots, emit, setupState, proxy, render: render2 } = instance;
+  const { type: Component, vnode, props, data, attrs, slots, emit, proxy, render: render2 } = instance;
   const { shapeFlag } = vnode;
   let result;
   try {
     if (shapeFlag & 4 /* STATEFUL_COMPONENT */) {
-      result = normalizeVNode(render2.call(proxy, props, setupState, data, ctx));
+      result = normalizeVNode(render2.call(proxy, data, props));
     } else if (shapeFlag & 2 /* FUNCTIONAL_COMPONENT */) {
       let render3 = Component;
       result = normalizeVNode(render3.length > 1 ? render3(props, { attrs, slots, emit }) : render3(props, null));
