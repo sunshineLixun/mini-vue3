@@ -1,6 +1,6 @@
-import { EMPTY_OBJ, NOOP, extend, hasOwn, isFunction } from '@vue/shared';
-import { ComponentRenderContext } from './components';
+import { EMPTY_OBJ, NOOP, extend, hasOwn } from '@vue/shared';
 import { ComponentInternalInstance } from './componentRenderUtils';
+import { nextTick, queueJob } from './scheduler';
 
 const enum AccessTypes {
 	OTHER,
@@ -12,7 +12,7 @@ const enum AccessTypes {
 
 export type PublicPropertiesMap = Record<string, (i: ComponentInternalInstance) => any>;
 
-export const publicPropertiesMap = /*#__PURE__*/ extend(Object.create(null), {
+export const publicPropertiesMap = extend(Object.create(null), {
 	// 列举几个常用的的 属性
 	$: i => i,
 	$el: i => i.vnode.el,
@@ -24,13 +24,13 @@ export const publicPropertiesMap = /*#__PURE__*/ extend(Object.create(null), {
 	$emit: i => i.emit,
 
 	$options: i => i.type,
-	// $forceUpdate: i => i.f || (i.f = () => queueJob(i.update)),
-	// $nextTick: i => i.n || (i.n = nextTick.bind(i.proxy!)),
+	$forceUpdate: i => queueJob(i.update),
+	$nextTick: i => nextTick.bind(i.proxy),
 	$watch: () => NOOP
 } as PublicPropertiesMap);
 
 export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
-	get({ _: instance }: ComponentRenderContext, key: string) {
+	get(instance: ComponentInternalInstance, key: string) {
 		const { accessCache, data, props } = instance;
 
 		if (key[0] !== '$') {
@@ -51,9 +51,8 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
 			return publicGetter(instance);
 		}
 	},
-	set({ _: instance }: ComponentRenderContext, key: string, newValue) {
+	set(instance: ComponentInternalInstance, key: string, newValue) {
 		const { data, props } = instance;
-
 		if (data !== EMPTY_OBJ && hasOwn(data, key)) {
 			data[key] = newValue;
 			return true;

@@ -1,6 +1,6 @@
 import { ReactiveEffect, WatchOptions } from '@vue/reactivity';
-import { VNode, VNodeChild, createVNode, normalizeVNode } from './vnode';
-import { SchedulerJob } from './scheduler';
+import { Comment, VNode, VNodeChild, createVNode, normalizeVNode } from './vnode';
+import { SchedulerJob, nextTick } from './scheduler';
 import { ShapeFlags } from '@vue/shared';
 
 export type Data = Record<string, any>;
@@ -34,7 +34,7 @@ export type ComponentPublicInstance<Props = {}, Data = {}> = {
 	$watch: (source: any, cb: () => any, options: WatchOptions) => any;
 	$emit: () => void;
 	$forceUpdate: () => void;
-	$nextTick: () => void;
+	$nextTick: typeof nextTick;
 };
 
 // 组件内部实例 -> 框架开发用
@@ -94,6 +94,7 @@ export function renderComponentRoot(instance: ComponentInternalInstance): VNode 
 		if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
 			// 执行组件的render函数，拿到vnode，
 			// 同时绑定响应式数据，因为在模板中会访问this、props、state等响应式数据
+			// render函数返回的内容访问了属性的get， 会触发依赖收集
 
 			result = normalizeVNode(render!.call(proxy, data, props));
 		} else if (shapeFlag & ShapeFlags.FUNCTIONAL_COMPONENT) {
@@ -105,6 +106,5 @@ export function renderComponentRoot(instance: ComponentInternalInstance): VNode 
 		// 如果错误，用注释节点Comment 来兜底？？？为什么
 		result = createVNode(Comment);
 	}
-
 	return result;
 }

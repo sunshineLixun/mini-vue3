@@ -1,7 +1,7 @@
 // 框架统一error处理
 
 export function callWithErrorHandling(fn: Function, args?: unknown[]) {
-	let res;
+	let res: any;
 	try {
 		res = args ? fn(...args) : fn();
 	} catch (err) {

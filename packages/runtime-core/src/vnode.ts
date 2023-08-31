@@ -2,6 +2,7 @@ import { Ref } from '@vue/reactivity';
 import { ShapeFlags, isArray, isFunction, isObject, isString } from '@vue/shared';
 import { RendererNode } from './renderer';
 import { Component } from './components';
+import { ComponentInternalInstance } from './componentRenderUtils';
 
 // ref='xxx'
 // ref="ref('xxx)"
@@ -69,6 +70,9 @@ export interface VNode<HostNode = RendererNode, ExtraProps = { [key: string]: an
 	children: VNodeNormalizedChildren | null;
 
 	// DOM
+
+	// 保存对应的组件实例
+	component: ComponentInternalInstance | null;
 
 	/**
 	 * 映射的真实节点

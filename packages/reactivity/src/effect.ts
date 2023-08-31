@@ -150,7 +150,7 @@ export function trackEffects(dep: Dep) {
  * @param newValue
  * @param oldValue
  */
-export function trigger(target: object, key: unknown, newValue: unknown, oldValue: unknown) {
+export function trigger(target: object, key: unknown) {
 	const depsMap = targetMap.get(target);
 	// 没有收集该对象
 	if (!depsMap) {

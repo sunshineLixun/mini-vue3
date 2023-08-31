@@ -35,8 +35,33 @@ function callWithErrorHandling(fn, args) {
   return res;
 }
 
+// packages/runtime-core/src/scheduler.ts
+var queue = [];
+var isFlushing = false;
+var resolvedPromise = Promise.resolve();
+function nextTick(fn) {
+  const p = resolvedPromise;
+  return fn ? p.then(this ? fn.bind(this) : fn) : p;
+}
+function queueJob(job) {
+  if (!queue.length || !queue.includes(job)) {
+    queue.push(job);
+  }
+  if (!isFlushing) {
+    isFlushing = true;
+    resolvedPromise.then(() => {
+      try {
+        queue.forEach((job2) => callWithErrorHandling(job2, null));
+      } finally {
+        isFlushing = false;
+        queue.length = 0;
+      }
+    });
+  }
+}
+
 // packages/runtime-core/src/componentPublicInstance.ts
-var publicPropertiesMap = /* @__PURE__ */ extend(/* @__PURE__ */ Object.create(null), {
+var publicPropertiesMap = extend(/* @__PURE__ */ Object.create(null), {
   // 列举几个常用的的 属性
   $: (i) => i,
   $el: (i) => i.vnode.el,
@@ -47,12 +72,12 @@ var publicPropertiesMap = /* @__PURE__ */ extend(/* @__PURE__ */ Object.create(n
   $refs: (i) => i.refs,
   $emit: (i) => i.emit,
   $options: (i) => i.type,
-  // $forceUpdate: i => i.f || (i.f = () => queueJob(i.update)),
-  // $nextTick: i => i.n || (i.n = nextTick.bind(i.proxy!)),
+  $forceUpdate: (i) => queueJob(i.update),
+  $nextTick: (i) => nextTick.bind(i.proxy),
   $watch: () => NOOP
 });
 var PublicInstanceProxyHandlers = {
-  get({ _: instance }, key) {
+  get(instance, key) {
     const { accessCache, data, props } = instance;
     if (key[0] !== "$") {
       if (data !== EMPTY_OBJ && hasOwn(data, key)) {
@@ -67,7 +92,7 @@ var PublicInstanceProxyHandlers = {
       return publicGetter(instance);
     }
   },
-  set({ _: instance }, key, newValue) {
+  set(instance, key, newValue) {
     const { data, props } = instance;
     if (data !== EMPTY_OBJ && hasOwn(data, key)) {
       data[key] = newValue;
@@ -172,7 +197,7 @@ function trackEffects(dep) {
     activeEffect.deps.push(dep);
   }
 }
-function trigger(target, key, newValue, oldValue) {
+function trigger(target, key) {
   const depsMap = targetMap.get(target);
   if (!depsMap) {
     return;
@@ -227,7 +252,7 @@ function createSetter() {
     const oldValue = target[key];
     const result = Reflect.set(target, key, value, receiver);
     if (hasChanged(value, oldValue)) {
-      trigger(target, key, value, oldValue);
+      trigger(target, key);
     }
     return result;
   };
@@ -246,6 +271,7 @@ function createGetter(isReadonly2 = false, shallow = false) {
     }
     const res = Reflect.get(target, key, receiver);
     if (!isReadonly2) {
+      debugger;
       track(target, key);
     }
     if (shallow) {
@@ -355,13 +381,13 @@ function setupComponent(instance) {
 function setupStatefulComponent(instance) {
   const Component = instance.type;
   const { setup } = Component;
+  instance.proxy = new Proxy(instance, PublicInstanceProxyHandlers);
   if (setup) {
-    instance.proxy = new Proxy(instance, PublicInstanceProxyHandlers);
     const setupResult = callWithErrorHandling(setup);
     handleSetupResult(instance, setupResult);
   } else {
     if (Component.data && isFunction(Component.data)) {
-      instance.proxy = shallowReactive(Component.data.call(instance.proxy));
+      instance.data = shallowReactive(Component.data.call(instance.proxy));
     }
     finishComponentSetup(instance);
   }
@@ -383,7 +409,7 @@ function finishComponentSetup(instance) {
 // packages/runtime-core/src/vnode.ts
 var Fragment = Symbol.for("v-fgt");
 var Text = Symbol.for("v-txt");
-var Comment2 = Symbol.for("v-cmt");
+var Comment = Symbol.for("v-cmt");
 function isVNode(value) {
   return value ? value.__v_isVNode === true : false;
 }
@@ -421,7 +447,7 @@ function isSameVNodeType(n1, n2) {
 }
 function normalizeVNode(child) {
   if (child === null || typeof child === "boolean") {
-    return createVNode(Comment2);
+    return createVNode(Comment);
   } else if (isArray(child)) {
     return createVNode(Fragment, null, child.slice());
   } else if (typeof child === "object") {
@@ -681,18 +707,19 @@ function baseCreateRenderer(options) {
         initialVNode.el = subTree.el;
         instance.isMounted = true;
       } else {
-        console.log("update");
+        const nextTree = renderComponentRoot(instance);
+        const prevTree = instance.subTree;
+        instance.subTree = nextTree;
+        patch(prevTree, nextTree, hostParentNode(prevTree.el), getNextHostNode(prevTree), instance);
       }
     };
-    const effect = instance.effect = new ReactiveEffect(componentUpdateFn, () => {
-      console.log(111);
-    });
+    const effect = instance.effect = new ReactiveEffect(componentUpdateFn, () => queueJob(update));
     const update = instance.update = () => effect.run();
     update.id = instance.uid;
     update();
   };
   const mountComponent = (initialVNode, container, anchor, parentComponent) => {
-    const instance = createComponentInstance(initialVNode, parentComponent);
+    const instance = initialVNode.component = createComponentInstance(initialVNode, parentComponent);
     setupComponent(instance);
     setupRenderEffect(instance, initialVNode, container, anchor);
   };
@@ -712,7 +739,7 @@ function baseCreateRenderer(options) {
       case Text:
         processText(n1, n2, container, anchor);
         break;
-      case Comment2:
+      case Comment:
         processComment(n1, n2, container, anchor);
         break;
       case Fragment:
@@ -739,6 +766,7 @@ function baseCreateRenderer(options) {
   };
   const getNextHostNode = (vnode) => {
     if (vnode.shapeFlag & 6 /* COMPONENT */) {
+      return getNextHostNode(vnode.component.subTree);
     }
     return hostNextSibling(vnode.anchor || vnode.el);
   };
@@ -910,7 +938,7 @@ var render = (...args) => {
 };
 export {
   CloneVNode,
-  Comment2 as Comment,
+  Comment,
   Fragment,
   Text,
   createRenderer,

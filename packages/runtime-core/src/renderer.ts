@@ -13,7 +13,7 @@ import { EMPTY_OBJ, ShapeFlags, isReservedProp } from '@vue/shared';
 import { createComponentInstance, setupComponent } from './components';
 import { ComponentInternalInstance, renderComponentRoot } from './componentRenderUtils';
 import { ReactiveEffect } from '@vue/reactivity';
-import { SchedulerJob } from './scheduler';
+import { SchedulerJob, queueJob } from './scheduler';
 
 export interface Renderer<HostElement = RendererElement> {
 	render: RootRenderFunction<HostElement>;
@@ -573,6 +573,7 @@ function baseCreateRenderer(options: RendererOptions) {
 			if (!instance.isMounted) {
 				// 1. 渲染组件内容
 				const subTree = (instance.subTree = renderComponentRoot(instance));
+
 				// patch children
 				patch(null, subTree, container, anchor, instance);
 
@@ -583,13 +584,16 @@ function baseCreateRenderer(options: RendererOptions) {
 				instance.isMounted = true;
 			} else {
 				// 当组件内部的响应式数据发生变化时，执行
-				console.log('update');
+				const nextTree = renderComponentRoot(instance);
+				// 获取老节点
+				const prevTree = instance.subTree;
+				// 更新老节点
+				instance.subTree = nextTree;
+				patch(prevTree, nextTree, hostParentNode(prevTree.el!), getNextHostNode(prevTree), instance);
 			}
 		};
 		// 重点: 创建effect
-		const effect = (instance.effect = new ReactiveEffect(componentUpdateFn, () => {
-			console.log(111);
-		}));
+		const effect = (instance.effect = new ReactiveEffect(componentUpdateFn, () => queueJob(update)));
 
 		const update: SchedulerJob = (instance.update = () => effect.run());
 
@@ -607,7 +611,7 @@ function baseCreateRenderer(options: RendererOptions) {
 		anchor: RendererNode | null,
 		parentComponent: ComponentInternalInstance
 	) => {
-		const instance = createComponentInstance(initialVNode, parentComponent);
+		const instance = (initialVNode.component = createComponentInstance(initialVNode, parentComponent));
 
 		setupComponent(instance);
 
@@ -675,8 +679,7 @@ function baseCreateRenderer(options: RendererOptions) {
 
 	const getNextHostNode: NextFn = vnode => {
 		if (vnode.shapeFlag & ShapeFlags.COMPONENT) {
-			// 组件
-			// TODO:获取相邻的组件
+			return getNextHostNode(vnode.component!.subTree);
 		}
 		return hostNextSibling(vnode.anchor || vnode.el);
 	};

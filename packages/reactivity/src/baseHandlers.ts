@@ -13,7 +13,7 @@ function createSetter() {
 		// 新值老值不相等，触发依赖更新
 		if (hasChanged(value, oldValue)) {
 			// 触发更新
-			trigger(target, key, value, oldValue);
+			trigger(target, key);
 		}
 
 		return result;
@@ -45,6 +45,7 @@ function createGetter(isReadonly = false, shallow = false) {
 		// readonly 不收集依赖
 		if (!isReadonly) {
 			// 依赖收集
+			debugger;
 			track(target, key);
 		}
 

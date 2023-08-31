@@ -9,10 +9,6 @@ import { shallowReactive } from '@vue/reactivity';
 
 export type Component = any;
 
-export interface ComponentRenderContext {
-	_: ComponentInternalInstance;
-}
-
 // 自增的组件标识符
 let uid = 0;
 
@@ -52,7 +48,6 @@ export function createComponentInstance(
 		isMounted: false
 	};
 
-	// instance.ctx = createDevRenderContext(instance);
 	instance.root = parent ? parent.root : instance;
 
 	return instance;
@@ -76,8 +71,9 @@ export function setupStatefulComponent(instance: ComponentInternalInstance) {
 	// vue3 setup
 	const { setup } = Component;
 
+	instance.proxy = new Proxy(instance, PublicInstanceProxyHandlers);
+
 	if (setup) {
-		instance.proxy = new Proxy(instance, PublicInstanceProxyHandlers);
 		const setupResult = callWithErrorHandling(setup);
 
 		handleSetupResult(instance, setupResult);
@@ -86,7 +82,8 @@ export function setupStatefulComponent(instance: ComponentInternalInstance) {
 	} else {
 		if (Component.data && isFunction(Component.data)) {
 			// 简易的支持下vue2写法
-			instance.proxy = shallowReactive(Component.data.call(instance.proxy));
+			// data() { return {} }
+			instance.data = shallowReactive(Component.data.call(instance.proxy));
 		}
 
 		finishComponentSetup(instance);

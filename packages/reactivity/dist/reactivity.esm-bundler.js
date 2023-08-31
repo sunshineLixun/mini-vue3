@@ -1,3 +1,13 @@
+// packages/shared/src/makeMap.ts
+function makeMap(str) {
+  const map = /* @__PURE__ */ Object.create(null);
+  const strs = str.split(",");
+  for (let i = 0; i < strs.length; i++) {
+    map[strs[i]] = true;
+  }
+  return (val) => !!map[val];
+}
+
 // packages/shared/src/general.ts
 var isObject = (val) => val !== null && typeof val === "object";
 var hasChanged = (value, oldValue) => !Object.is(value, oldValue);
@@ -10,6 +20,7 @@ var isSet = (val) => toTypeString(val) === "[object Set]";
 var objectToString = Object.prototype.toString;
 var toTypeString = (value) => objectToString.call(value);
 var isPlainObject = (val) => toTypeString(val) === "[object Object]";
+var isReservedProp = makeMap(",key,ref");
 
 // packages/reactivity/src/dep.ts
 var createDep = (effects) => {
@@ -169,7 +180,7 @@ function trackEffects(dep) {
     activeEffect.deps.push(dep);
   }
 }
-function trigger(target, key, newValue, oldValue) {
+function trigger(target, key) {
   const depsMap = targetMap.get(target);
   if (!depsMap) {
     return;
@@ -324,26 +335,31 @@ function createSetter() {
     const oldValue = target[key];
     const result = Reflect.set(target, key, value, receiver);
     if (hasChanged(value, oldValue)) {
-      trigger(target, key, value, oldValue);
+      trigger(target, key);
     }
     return result;
   };
 }
-var get = createGetter(false);
-var readonlyGet = createGetter(true);
-function createGetter(isReadonly2 = false) {
+var get = createGetter(false, false);
+var readonlyGet = createGetter(true, false);
+var shallowReactiveGet = createGetter(false, true);
+function createGetter(isReadonly2 = false, shallow = false) {
   return function get2(target, key, receiver) {
     if (key === "__v_isReactive" /* IS_REACTIVE */) {
       return !isReadonly2;
     } else if (key === "__v_isReadonly" /* IS_READONLY */) {
       return isReadonly2;
-    } else if (key === "__v_raw" /* RAW */ && receiver === (isReadonly2 ? readonlyMap : reactiveMap.get(target))) {
+    } else if (key === "__v_raw" /* RAW */ && receiver === (isReadonly2 ? readonlyMap : shallow ? shallowReactiveMap : reactiveMap).get(target)) {
       return target;
     }
+    const res = Reflect.get(target, key, receiver);
     if (!isReadonly2) {
+      debugger;
       track(target, key);
     }
-    const res = Reflect.get(target, key, receiver);
+    if (shallow) {
+      return res;
+    }
     if (isRef(res)) {
       return res.value;
     }
@@ -356,6 +372,10 @@ function createGetter(isReadonly2 = false) {
 var mutableHandlers = {
   set,
   get
+};
+var shallowReactiveHandlers = {
+  set,
+  get: shallowReactiveGet
 };
 var readonlyHandlers = {
   // 只读属性不能被set
@@ -382,6 +402,7 @@ var ReactiveFlags = /* @__PURE__ */ ((ReactiveFlags2) => {
 })(ReactiveFlags || {});
 var reactiveMap = /* @__PURE__ */ new WeakMap();
 var readonlyMap = /* @__PURE__ */ new WeakMap();
+var shallowReactiveMap = /* @__PURE__ */ new WeakMap();
 var isReadonly = (value) => {
   return !!(value && value["__v_isReadonly" /* IS_READONLY */]);
 };
@@ -409,6 +430,9 @@ function reactive(target) {
     return target;
   }
   return createReactiveObject(target, false, mutableHandlers, reactiveMap);
+}
+function shallowReactive(target) {
+  return createReactiveObject(target, false, shallowReactiveHandlers, shallowReactiveMap);
 }
 function createReactiveObject(target, isReadonly2, baseHandlers, proxyMap) {
   if (!isObject(target)) {
@@ -491,6 +515,17 @@ function computed(getterOrOptions) {
   return new ComputedRefImpl(getter, setter);
 }
 
+// packages/runtime-core/src/errorHandling.ts
+function callWithErrorHandling(fn, args) {
+  let res;
+  try {
+    res = args ? fn(...args) : fn();
+  } catch (err) {
+    console.log(err);
+  }
+  return res;
+}
+
 // packages/reactivity/src/watch.ts
 var INITIAL_WATCHER_VALUE = {};
 function watchEffect(effect2, options) {
@@ -513,12 +548,7 @@ function doWatch(source, cb, { immediate, deep } = {}) {
       } else if (isReactive(s)) {
         return traverse(s);
       } else if (isFunction(s)) {
-        let res;
-        try {
-          res = s();
-        } catch (e) {
-        }
-        return res;
+        return callWithErrorHandling(s);
       }
     });
   } else if (isFunction(source)) {
@@ -620,6 +650,8 @@ export {
   readonlyMap,
   recordEffectScope,
   ref,
+  shallowReactive,
+  shallowReactiveMap,
   shallowRef,
   stop,
   toRaw,
