@@ -31,16 +31,18 @@ export const publicPropertiesMap = extend(Object.create(null), {
 
 export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
 	get(instance: ComponentInternalInstance, key: string) {
-		const { accessCache, data, props } = instance;
+		const { accessCache, data, props, setupState } = instance;
 
 		if (key[0] !== '$') {
 			// 获取data函数中的值
 			if (data !== EMPTY_OBJ && hasOwn(data, key)) {
-				// 缓存
+				// TODO:缓存
 				accessCache[key] = AccessTypes.DATA;
 				return data[key];
 			} else if (props !== EMPTY_OBJ && hasOwn(props, key)) {
 				return props[key];
+			} else if (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) {
+				return setupState[key];
 			}
 		}
 
@@ -52,15 +54,16 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
 		}
 	},
 	set(instance: ComponentInternalInstance, key: string, newValue) {
-		const { data, props } = instance;
+		const { data, props, setupState } = instance;
+
 		if (data !== EMPTY_OBJ && hasOwn(data, key)) {
 			data[key] = newValue;
 			return true;
 		} else if (hasOwn(props, key)) {
 			console.warn('props is readonly');
 			return false;
+		} else if (hasOwn(setupState, key)) {
+			return true;
 		}
-
-		return true;
 	}
 };

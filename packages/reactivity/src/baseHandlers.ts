@@ -45,7 +45,7 @@ function createGetter(isReadonly = false, shallow = false) {
 		// readonly 不收集依赖
 		if (!isReadonly) {
 			// 依赖收集
-			debugger;
+			console.log('track');
 			track(target, key);
 		}
 

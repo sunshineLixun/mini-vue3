@@ -9,8 +9,7 @@
 		<div id="app"></div>
 		<script type="module">
 			// import { h, render, reactive } from '../../../node_modules/vue/dist/vue.esm-browser.js';
-			import { h, render } from './runtime-core.esm-bundler.js';
-			import { reactive } from '../../reactivity/dist/reactivity.esm-bundler.js';
+			import { h, render, reactive, toRefs } from './runtime-core.esm-bundler.js';
 
 			// 1. data
 			// const ParentComponent = {
@@ -22,15 +21,38 @@
 			// 	},
 			// 	render() {
 			// 		function onClick() {
+			// 			console.log(this)
 			// 			this.age++;
 			// 		}
 
-			// 		return h('div', [h('button', { onClick: onClick.bind(this) }, `${this.name}+${this.age}`)]);
+			// 		return h('button', { onClick: onClick.bind(this) }, `${this.name}+${this.age}`)
 			// 	}
 			// };
 			// render(h(ParentComponent), app);
 
 			// 2. setup
+			// const Com = {
+			// 	setup() {
+			// 		const state = reactive({
+			// 			name: '当前年龄',
+			// 			age: 1
+			// 		});
+			// 		const onClick = () => {
+			// 			state.age++;
+			// 		};
+
+			// 		return {
+			// 			...toRefs(state)
+			// 		}
+					
+			// 	},
+			// 	render(proxy) {
+			// 		return h('button', `${proxy.name}+${proxy.age}`)
+			// 	}
+			// };
+			// render(h(Com), app);
+
+			// 3 setup return
 			const Com = {
 				setup() {
 					const state = reactive({
@@ -40,12 +62,10 @@
 					const onClick = () => {
 						state.age++;
 					};
-					return () => {
-						return h('button', { onClick }, `${state.name}+${state.age}`)
-					}
-				}
-			};
 
+					return () => h('button', { onClick }, `${state.name}+${state.age}`)
+				},
+			};
 			render(h(Com), app);
 		</script>
 	</body>

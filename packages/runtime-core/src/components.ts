@@ -5,7 +5,7 @@ import { ComponentInternalInstance, InternalRenderFunction } from './componentRe
 import { VNode } from './vnode';
 import { callWithErrorHandling } from './errorHandling';
 import { PublicInstanceProxyHandlers } from './componentPublicInstance';
-import { shallowReactive } from '@vue/reactivity';
+import { proxyRefs, shallowReactive } from '@vue/reactivity';
 
 export type Component = any;
 
@@ -29,6 +29,8 @@ export function createComponentInstance(
 		attrs: EMPTY_OBJ,
 		slots: EMPTY_OBJ,
 		refs: EMPTY_OBJ,
+
+		setupState: EMPTY_OBJ,
 
 		// ctx: EMPTY_OBJ,
 
@@ -112,6 +114,7 @@ export function handleSetupResult(instance: ComponentInternalInstance, setupResu
 		 * 	}
 		 * }
 		 */
+		instance.setupState = proxyRefs(setupResult);
 	}
 	finishComponentSetup(instance);
 }

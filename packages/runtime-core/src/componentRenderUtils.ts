@@ -57,6 +57,9 @@ export interface ComponentInternalInstance {
 	slots: any;
 	refs: Data;
 
+	// setup函数返回的数据
+	setupState: Data;
+
 	// 缓存
 	accessCache: Data | null;
 	emit: () => void;
@@ -86,7 +89,7 @@ export interface ComponentInternalInstance {
 }
 
 export function renderComponentRoot(instance: ComponentInternalInstance): VNode {
-	const { type: Component, vnode, props, data, attrs, slots, emit, proxy, render } = instance;
+	const { type: Component, vnode, props, data, attrs, slots, setupState, emit, proxy, render } = instance;
 	const { shapeFlag } = vnode;
 	// 判断是状态组件还是函数组件
 	let result: VNode;
@@ -95,14 +98,14 @@ export function renderComponentRoot(instance: ComponentInternalInstance): VNode 
 			// 执行组件的render函数，拿到vnode，
 			// 同时绑定响应式数据，因为在模板中会访问this、props、state等响应式数据
 			// render函数返回的内容访问了属性的get， 会触发依赖收集
-
-			result = normalizeVNode(render!.call(proxy, data, props));
+			result = normalizeVNode(render!.call(proxy, proxy, props, setupState, data));
 		} else if (shapeFlag & ShapeFlags.FUNCTIONAL_COMPONENT) {
 			// 函数组件
 			let render = Component;
 			result = normalizeVNode(render.length > 1 ? render(props, { attrs, slots, emit }) : render(props, null));
 		}
 	} catch (error) {
+		console.log(error);
 		// 如果错误，用注释节点Comment 来兜底？？？为什么
 		result = createVNode(Comment);
 	}

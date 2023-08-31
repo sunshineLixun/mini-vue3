@@ -170,7 +170,7 @@ export function normalizeVNode(child: VNodeChild): VNode {
 	} else if (typeof child === 'object') {
 		// 本身就是 vnode
 		// TODO: cloneVNode
-		return CloneVNode(child);
+		return cloneVNode(child);
 	} else {
 		// string numbers
 		return createVNode(Text, null, String(child));
@@ -178,6 +178,6 @@ export function normalizeVNode(child: VNodeChild): VNode {
 }
 
 // TODO:实现
-export function CloneVNode(vnode: VNode): VNode {
+export function cloneVNode(vnode: VNode): VNode {
 	return vnode;
 }

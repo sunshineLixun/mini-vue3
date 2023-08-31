@@ -15,7 +15,12 @@ var isFunction = (val) => typeof val === "function";
 var NOOP = () => {
 };
 var isArray = Array.isArray;
+var isMap = (val) => toTypeString(val) === "[object Map]";
+var isSet = (val) => toTypeString(val) === "[object Set]";
 var isString = (val) => typeof val === "string";
+var objectToString = Object.prototype.toString;
+var toTypeString = (value) => objectToString.call(value);
+var isPlainObject = (val) => toTypeString(val) === "[object Object]";
 var isNoEmptyValue = (val) => val !== void 0 || val !== null;
 var extend = Object.assign;
 var EMPTY_OBJ = {};
@@ -78,13 +83,15 @@ var publicPropertiesMap = extend(/* @__PURE__ */ Object.create(null), {
 });
 var PublicInstanceProxyHandlers = {
   get(instance, key) {
-    const { accessCache, data, props } = instance;
+    const { accessCache, data, props, setupState } = instance;
     if (key[0] !== "$") {
       if (data !== EMPTY_OBJ && hasOwn(data, key)) {
         accessCache[key] = 2 /* DATA */;
         return data[key];
       } else if (props !== EMPTY_OBJ && hasOwn(props, key)) {
         return props[key];
+      } else if (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) {
+        return setupState[key];
       }
     }
     const publicGetter = publicPropertiesMap[key];
@@ -93,15 +100,16 @@ var PublicInstanceProxyHandlers = {
     }
   },
   set(instance, key, newValue) {
-    const { data, props } = instance;
+    const { data, props, setupState } = instance;
     if (data !== EMPTY_OBJ && hasOwn(data, key)) {
       data[key] = newValue;
       return true;
     } else if (hasOwn(props, key)) {
       console.warn("props is readonly");
       return false;
+    } else if (hasOwn(setupState, key)) {
+      return true;
     }
-    return true;
   }
 };
 
@@ -113,9 +121,63 @@ var createDep = (effects) => {
 
 // packages/reactivity/src/effectScope.ts
 var activeEffectScope;
-function recordEffectScope(effect) {
+var EffectScope = class {
+  // detached 是否是独立的，默认不是独立的，受父作用域控制
+  constructor(detached = false) {
+    this.detached = detached;
+    // 标记是否是激活状态
+    this._active = true;
+    if (!detached && activeEffectScope) {
+      (activeEffectScope.scopes || (activeEffectScope.scopes = [])).push(this);
+    }
+  }
+  run(fn) {
+    if (this._active) {
+      try {
+        this.parent = activeEffectScope;
+        activeEffectScope = this;
+        return fn();
+      } finally {
+        activeEffectScope = this.parent;
+        this.parent = void 0;
+      }
+    }
+  }
+  // 将收集到的effect全部stop
+  stop() {
+    if (this._active) {
+      if (this.effects) {
+        this.effects.forEach((effect2) => {
+          effect2.stop();
+        });
+        this.effects.length = 0;
+      }
+      if (this.cleanups) {
+        this.cleanups.forEach((fn) => fn());
+      }
+      if (this.scopes) {
+        this.scopes.forEach((self) => {
+          self.stop();
+        });
+      }
+      this._active = false;
+    }
+  }
+};
+function effectScope(detached) {
+  return new EffectScope(detached);
+}
+function recordEffectScope(effect2) {
   if (activeEffectScope) {
-    (activeEffectScope.effects || (activeEffectScope.effects = [])).push(effect);
+    (activeEffectScope.effects || (activeEffectScope.effects = [])).push(effect2);
+  }
+}
+function getCurrentScope() {
+  return activeEffectScope;
+}
+function onScopeDispose(fn) {
+  if (activeEffectScope) {
+    (activeEffectScope.cleanups || (activeEffectScope.cleanups = [])).push(fn);
   }
 }
 
@@ -177,6 +239,18 @@ var ReactiveEffect = class {
     }
   }
 };
+function effect(fn, options) {
+  const _effect = new ReactiveEffect(fn, options == null ? void 0 : options.scheduler);
+  if (!options) {
+    _effect.run();
+  }
+  const runner = _effect.run.bind(_effect);
+  runner.effect = _effect;
+  return runner;
+}
+function stop(runner) {
+  runner.effect.stop();
+}
 function track(target, key) {
   if (activeEffect) {
     let depsMap = targetMap.get(target);
@@ -218,31 +292,131 @@ function triggerEffects(dep) {
   if (dep) {
     const effects = isArray(dep) ? dep : [...dep];
     if (effects) {
-      effects.forEach((effect) => {
-        if (activeEffect !== effect) {
-          if (effect.scheduler) {
-            effect.scheduler();
+      effects.forEach((effect2) => {
+        if (activeEffect !== effect2) {
+          if (effect2.scheduler) {
+            effect2.scheduler();
           } else {
-            effect.run();
+            effect2.run();
           }
         }
       });
     }
   }
 }
-function cleanupEffect(effect) {
-  const { deps } = effect;
+function cleanupEffect(effect2) {
+  const { deps } = effect2;
   if (deps.length) {
     for (let index = 0; index < deps.length; index++) {
-      deps[index].delete(effect);
+      deps[index].delete(effect2);
     }
     deps.length = 0;
   }
 }
 
 // packages/reactivity/src/ref.ts
-function isRef(ref) {
-  return !!(ref && ref.__v_isRef === true);
+function unref(ref2) {
+  return isRef(ref2) ? ref2.value : ref2;
+}
+function isRef(ref2) {
+  return !!(ref2 && ref2.__v_isRef === true);
+}
+function ref(value) {
+  return createRef(value, false);
+}
+function shallowRef(value) {
+  return createRef(value, true);
+}
+function createRef(value, shallow) {
+  if (isRef(value)) {
+    return value;
+  }
+  return new RefImpl(value, shallow);
+}
+var RefImpl = class {
+  constructor(value, __v_isShallow) {
+    this.__v_isShallow = __v_isShallow;
+    this.dep = void 0;
+    // 内部缓存的值,用作get方法放回的值
+    this._value = void 0;
+    // 内部缓存的原始值，用作新 老值变化的比较
+    this._rawValue = void 0;
+    this.__v_isRef = true;
+    this._rawValue = __v_isShallow ? value : toRaw(value);
+    this._value = __v_isShallow ? value : toReactive(value);
+  }
+  get value() {
+    trackRefValue(this);
+    return this._value;
+  }
+  set value(newValue) {
+    newValue = this.__v_isShallow ? newValue : toRaw(newValue);
+    if (hasChanged(newValue, this._rawValue)) {
+      this._rawValue = newValue;
+      this._value = this.__v_isShallow ? newValue : toReactive(newValue);
+      triggerRefValue(this);
+    }
+  }
+};
+function trackRefValue(ref2) {
+  if (activeEffect) {
+    trackEffects(ref2.dep || (ref2.dep = createDep()));
+  }
+}
+function triggerRefValue(ref2) {
+  const dep = ref2.dep;
+  if (dep) {
+    triggerEffects(dep);
+  }
+}
+function toRef(source, key) {
+  if (isRef(source)) {
+    return source;
+  } else if (isObject(source)) {
+    return propertyToRef(source, key);
+  } else {
+    return ref(source);
+  }
+}
+function toRefs(object) {
+  const res = isArray(object) ? new Array(object.length) : {};
+  for (const key in object) {
+    res[key] = propertyToRef(object, key);
+  }
+  return res;
+}
+function propertyToRef(source, key) {
+  const value = source[key];
+  return isRef(value) ? value : new ObjectRefImpl(source, key);
+}
+var ObjectRefImpl = class {
+  constructor(_object, _key) {
+    this._object = _object;
+    this._key = _key;
+    this.__v_isRef = true;
+  }
+  // ref.value
+  get value() {
+    return this._object[this._key];
+  }
+  set value(newValue) {
+    this._object[this._key] = newValue;
+  }
+};
+function proxyRefs(objectWithRef) {
+  return isReactive(objectWithRef) ? objectWithRef : new Proxy(objectWithRef, {
+    get(target, key, receiver) {
+      return unref(Reflect.get(target, key, receiver));
+    },
+    set(target, key, newValue, receiver) {
+      const oldValue = target[key];
+      if (isRef(oldValue) && !isRef(newValue)) {
+        oldValue.value = newValue;
+        return true;
+      }
+      return Reflect.set(target, key, newValue, receiver);
+    }
+  });
 }
 
 // packages/reactivity/src/baseHandlers.ts
@@ -271,7 +445,7 @@ function createGetter(isReadonly2 = false, shallow = false) {
     }
     const res = Reflect.get(target, key, receiver);
     if (!isReadonly2) {
-      debugger;
+      console.log("track");
       track(target, key);
     }
     if (shallow) {
@@ -309,12 +483,36 @@ var readonlyHandlers = {
 };
 
 // packages/reactivity/src/reactive.ts
+var ReactiveFlags = /* @__PURE__ */ ((ReactiveFlags2) => {
+  ReactiveFlags2["SKIP"] = "__v_skip";
+  ReactiveFlags2["IS_REACTIVE"] = "__v_isReactive";
+  ReactiveFlags2["IS_READONLY"] = "__v_isReadonly";
+  ReactiveFlags2["IS_SHALLOW"] = "__v_isShallow";
+  ReactiveFlags2["RAW"] = "__v_raw";
+  return ReactiveFlags2;
+})(ReactiveFlags || {});
 var reactiveMap = /* @__PURE__ */ new WeakMap();
 var readonlyMap = /* @__PURE__ */ new WeakMap();
 var shallowReactiveMap = /* @__PURE__ */ new WeakMap();
 var isReadonly = (value) => {
   return !!(value && value["__v_isReadonly" /* IS_READONLY */]);
 };
+var isReactive = (value) => {
+  if (isReadonly(value)) {
+    return isReactive(value["__v_raw" /* RAW */]);
+  }
+  return !!(value && value["__v_isReactive" /* IS_REACTIVE */]);
+};
+function isProxy(value) {
+  return isReadonly(value) || isReactive(value);
+}
+function toRaw(observed) {
+  const raw = observed && observed["__v_raw" /* RAW */];
+  return raw ? toRaw(raw) : observed;
+}
+function toReactive(value) {
+  return isObject(value) ? reactive(value) : value;
+}
 function readonly(target) {
   return createReactiveObject(target, true, readonlyHandlers, readonlyMap);
 }
@@ -343,6 +541,174 @@ function createReactiveObject(target, isReadonly2, baseHandlers, proxyMap) {
   return proxy;
 }
 
+// packages/reactivity/src/computed.ts
+var ComputedRefImpl = class {
+  constructor(getter, _setter) {
+    this.getter = getter;
+    this._setter = _setter;
+    // 收集当前的effect， 作用：当改变计算属性的值，也要触发effect依赖更新
+    this.dep = void 0;
+    // 内部缓存计算过后的值
+    this._value = void 0;
+    // 标记当前是否被缓存过：如果是true，表明没有用过， 需要执行effect的run，false表明用过了，取_value缓存的值
+    this._dirty = true;
+    this.effect = new ReactiveEffect(getter, () => {
+      if (!this._dirty) {
+        this._dirty = true;
+        triggerEffects(this.dep);
+      }
+    });
+  }
+  // 对计算属性取值
+  /**
+   * @example
+   * ```js
+   * const fullName = computed(() => state.firstName + state.secoedName)
+   * ```
+   *
+   * ```html
+   * <template>{{fullName}}</template>
+   * ```
+   */
+  get value() {
+    if (activeEffect) {
+      trackEffects(this.dep || (this.dep = /* @__PURE__ */ new Set()));
+    }
+    if (this._dirty) {
+      this._dirty = false;
+      this._value = this.effect.run();
+    }
+    return this._value;
+  }
+  /**
+   * @example
+   * ```js
+   * const fullName = computed(() => state.firstName + state.secoedName)
+   * fullName.value = 'mini vue3'
+   * 对计算属性赋值，也会触发页面更新
+   * ```
+   */
+  set value(newValue) {
+    this._setter(newValue);
+  }
+};
+function computed(getterOrOptions) {
+  let setter;
+  let getter;
+  const onlyGetter = isFunction(getterOrOptions);
+  if (onlyGetter) {
+    getter = getterOrOptions;
+    setter = NOOP;
+  } else {
+    setter = getterOrOptions.set || NOOP;
+    getter = getterOrOptions.get;
+  }
+  return new ComputedRefImpl(getter, setter);
+}
+
+// packages/reactivity/src/watch.ts
+var INITIAL_WATCHER_VALUE = {};
+function watchEffect(effect2, options) {
+  doWatch(effect2, null, options);
+}
+function watch(source, cb, options) {
+  return doWatch(source, cb, options);
+}
+function doWatch(source, cb, { immediate, deep } = {}) {
+  let getter;
+  if (isRef(source)) {
+    getter = () => source.value;
+  } else if (isReactive(source)) {
+    getter = () => source;
+    deep = true;
+  } else if (isArray(source)) {
+    getter = () => source.map((s) => {
+      if (isRef(s)) {
+        return s.value;
+      } else if (isReactive(s)) {
+        return traverse(s);
+      } else if (isFunction(s)) {
+        return callWithErrorHandling(s);
+      }
+    });
+  } else if (isFunction(source)) {
+    if (cb) {
+      getter = source;
+    } else {
+      getter = () => {
+        if (cleanup) {
+          cleanup();
+        }
+        return source(onCleanup);
+      };
+    }
+  } else {
+    getter = NOOP;
+  }
+  if (cb && deep) {
+    getter = () => traverse(source);
+  }
+  let oldValue = INITIAL_WATCHER_VALUE;
+  let cleanup;
+  const onCleanup = (fn) => {
+    cleanup = effect2.stop = () => {
+      fn();
+    };
+  };
+  const job = () => {
+    if (!effect2.active) {
+      return;
+    }
+    if (cb) {
+      const newValue = effect2.run();
+      if (cleanup) {
+        cleanup();
+      }
+      cb(newValue, oldValue, onCleanup);
+      oldValue = newValue;
+    } else {
+      effect2.run();
+    }
+  };
+  const effect2 = new ReactiveEffect(getter, job);
+  if (cb) {
+    if (immediate) {
+      job();
+    } else {
+      oldValue = effect2.run();
+    }
+  } else {
+    effect2.run();
+  }
+  return () => effect2.stop();
+}
+function traverse(value, seen) {
+  if (!isObject(value)) {
+    return value;
+  }
+  seen = seen || /* @__PURE__ */ new Set();
+  if (seen.has(value)) {
+    return value;
+  }
+  seen.add(value);
+  if (isRef(value)) {
+    traverse(value.value, seen);
+  } else if (isMap(value) || isSet(value)) {
+    value.forEach((val) => {
+      traverse(val, seen);
+    });
+  } else if (isArray(value)) {
+    for (let index = 0; index < value.length; index++) {
+      traverse(value[index], seen);
+    }
+  } else if (isPlainObject(value)) {
+    for (const key in value) {
+      traverse(value[key], seen);
+    }
+  }
+  return value;
+}
+
 // packages/runtime-core/src/components.ts
 var uid = 0;
 function createComponentInstance(vnode, parent) {
@@ -357,6 +723,7 @@ function createComponentInstance(vnode, parent) {
     attrs: EMPTY_OBJ,
     slots: EMPTY_OBJ,
     refs: EMPTY_OBJ,
+    setupState: EMPTY_OBJ,
     // ctx: EMPTY_OBJ,
     accessCache: EMPTY_OBJ,
     emit: null,
@@ -396,6 +763,7 @@ function handleSetupResult(instance, setupResult) {
   if (isFunction(setupResult)) {
     instance.render = setupResult;
   } else if (isObject(setupResult)) {
+    instance.setupState = proxyRefs(setupResult);
   }
   finishComponentSetup(instance);
 }
@@ -414,11 +782,11 @@ function isVNode(value) {
   return value ? value.__v_isVNode === true : false;
 }
 var normalizeKey = ({ key }) => key != null ? key : null;
-var normalizeRef = ({ ref }) => {
-  if (typeof ref === "number") {
-    ref = String(ref);
+var normalizeRef = ({ ref: ref2 }) => {
+  if (typeof ref2 === "number") {
+    ref2 = String(ref2);
   }
-  return ref;
+  return ref2;
 };
 function createVNode(type, props = null, children = null) {
   const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : isFunction(type) ? 2 /* FUNCTIONAL_COMPONENT */ : 0;
@@ -451,28 +819,29 @@ function normalizeVNode(child) {
   } else if (isArray(child)) {
     return createVNode(Fragment, null, child.slice());
   } else if (typeof child === "object") {
-    return CloneVNode(child);
+    return cloneVNode(child);
   } else {
     return createVNode(Text, null, String(child));
   }
 }
-function CloneVNode(vnode) {
+function cloneVNode(vnode) {
   return vnode;
 }
 
 // packages/runtime-core/src/componentRenderUtils.ts
 function renderComponentRoot(instance) {
-  const { type: Component, vnode, props, data, attrs, slots, emit, proxy, render: render2 } = instance;
+  const { type: Component, vnode, props, data, attrs, slots, setupState, emit, proxy, render: render2 } = instance;
   const { shapeFlag } = vnode;
   let result;
   try {
     if (shapeFlag & 4 /* STATEFUL_COMPONENT */) {
-      result = normalizeVNode(render2.call(proxy, data, props));
+      result = normalizeVNode(render2.call(proxy, proxy, props, setupState, data));
     } else if (shapeFlag & 2 /* FUNCTIONAL_COMPONENT */) {
       let render3 = Component;
       result = normalizeVNode(render3.length > 1 ? render3(props, { attrs, slots, emit }) : render3(props, null));
     }
   } catch (error) {
+    console.log(error);
     result = createVNode(Comment);
   }
   return result;
@@ -713,8 +1082,8 @@ function baseCreateRenderer(options) {
         patch(prevTree, nextTree, hostParentNode(prevTree.el), getNextHostNode(prevTree), instance);
       }
     };
-    const effect = instance.effect = new ReactiveEffect(componentUpdateFn, () => queueJob(update));
-    const update = instance.update = () => effect.run();
+    const effect2 = instance.effect = new ReactiveEffect(componentUpdateFn, () => queueJob(update));
+    const update = instance.update = () => effect2.run();
     update.id = instance.uid;
     update();
   };
@@ -937,16 +1306,55 @@ var render = (...args) => {
   ensureRenderer().render(...args);
 };
 export {
-  CloneVNode,
   Comment,
   Fragment,
+  ReactiveEffect,
+  ReactiveFlags,
   Text,
+  activeEffect,
+  cleanupEffect,
+  cloneVNode,
+  computed,
+  createReactiveObject,
   createRenderer,
   createVNode,
+  effect,
+  effectScope,
+  getCurrentScope,
   h,
+  isProxy,
+  isReactive,
+  isReadonly,
+  isRef,
   isSameVNodeType,
   isVNode,
   normalizeVNode,
-  render
+  onScopeDispose,
+  proxyRefs,
+  reactive,
+  reactiveMap,
+  readonly,
+  readonlyMap,
+  recordEffectScope,
+  ref,
+  render,
+  shallowReactive,
+  shallowReactiveMap,
+  shallowRef,
+  stop,
+  toRaw,
+  toReactive,
+  toRef,
+  toRefs,
+  track,
+  trackEffects,
+  trackRefValue,
+  traverse,
+  trigger,
+  triggerEffects,
+  triggerRefValue,
+  unref,
+  watch,
+  watchEffect
 };
 //# sourceMappingURL=runtime-core.esm-bundler.js.map

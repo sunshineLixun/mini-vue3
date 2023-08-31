@@ -354,7 +354,7 @@ function createGetter(isReadonly2 = false, shallow = false) {
     }
     const res = Reflect.get(target, key, receiver);
     if (!isReadonly2) {
-      debugger;
+      console.log("track");
       track(target, key);
     }
     if (shallow) {

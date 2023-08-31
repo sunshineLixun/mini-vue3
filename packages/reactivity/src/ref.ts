@@ -150,7 +150,7 @@ class ObjectRefImpl<T extends object, K extends keyof T> {
 }
 
 // 对ref做解包
-export function proxyRefs<T>(objectWithRef: Ref<T>) {
+export function proxyRefs<T extends object>(objectWithRef: T) {
 	// 如果是reactive 直接返回本身
 	return isReactive(objectWithRef)
 		? objectWithRef
