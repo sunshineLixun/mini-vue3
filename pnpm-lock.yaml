@@ -29,6 +29,9 @@ importers:
 
   packages/reactivity:
     dependencies:
+      '@vue/runtime-core':
+        specifier: workspace:^
+        version: link:../runtime-core
       '@vue/shared':
         specifier: workspace:^1.0.0
         version: link:../shared

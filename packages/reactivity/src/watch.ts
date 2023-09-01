@@ -1,13 +1,18 @@
-import { NOOP, isArray, isFunction, isMap, isObject, isPlainObject, isSet } from '@vue/shared';
+import { EMPTY_OBJ, NOOP, isArray, isFunction, isMap, isObject, isPlainObject, isSet } from '@vue/shared';
+import { queueJob } from '@vue/runtime-core';
 import { ComputedRef } from './computed';
-import { ReactiveEffect } from './effect';
+import { EffectScheduler, ReactiveEffect } from './effect';
 import { isReactive } from './reactive';
 import { Ref, isRef } from './ref';
 import { callWithErrorHandling } from 'packages/runtime-core/src/errorHandling';
 
 const INITIAL_WATCHER_VALUE = {};
 
-export interface WatchOptions<Immediate = boolean> {
+export interface WatchOptionsBase {
+	flush?: 'sync' | 'pre';
+}
+
+export interface WatchOptions<Immediate = boolean> extends WatchOptionsBase {
 	immediate?: Immediate;
 	deep?: boolean;
 }
@@ -43,7 +48,7 @@ export function watch<T = any, Immediate extends Readonly<boolean> = false>(
 function doWatch(
 	source: WatchSource | WatchSource[] | WatchEffect | object,
 	cb: WatchCallback | null,
-	{ immediate, deep }: WatchOptions = {}
+	{ immediate, deep, flush }: WatchOptions = EMPTY_OBJ
 ) {
 	let getter: () => any;
 
@@ -150,8 +155,16 @@ function doWatch(
 	// watch是 effect + 自定义scheduler, scheduler回调控制cb回传数值
 	// watchEffect 就是effect，当数据变化时，直接触发回调更新
 
-	// TODO: queueJob
-	const effect = new ReactiveEffect(getter, job);
+	let scheduler: EffectScheduler;
+	if (flush === 'sync') {
+		// 同步更新
+		scheduler = job;
+	} else {
+		// 默认是异步，多次触发只会执行一次， 批处理
+		scheduler = () => queueJob(job);
+	}
+
+	const effect = new ReactiveEffect(getter, scheduler);
 
 	if (cb) {
 		if (immediate) {
