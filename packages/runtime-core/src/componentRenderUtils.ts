@@ -60,6 +60,8 @@ export interface ComponentInternalInstance {
 	// setup函数返回的数据
 	setupState: Data;
 
+	propsOptions: Data;
+
 	// 缓存
 	accessCache: Data | null;
 	emit: () => void;

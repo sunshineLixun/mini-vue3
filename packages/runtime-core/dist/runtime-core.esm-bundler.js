@@ -445,7 +445,6 @@ function createGetter(isReadonly2 = false, shallow = false) {
     }
     const res = Reflect.get(target, key, receiver);
     if (!isReadonly2) {
-      console.log("track");
       track(target, key);
     }
     if (shallow) {
@@ -614,7 +613,7 @@ function watchEffect(effect2, options) {
 function watch(source, cb, options) {
   return doWatch(source, cb, options);
 }
-function doWatch(source, cb, { immediate, deep } = {}) {
+function doWatch(source, cb, { immediate, deep, flush } = EMPTY_OBJ) {
   let getter;
   if (isRef(source)) {
     getter = () => source.value;
@@ -670,7 +669,13 @@ function doWatch(source, cb, { immediate, deep } = {}) {
       effect2.run();
     }
   };
-  const effect2 = new ReactiveEffect(getter, job);
+  let scheduler;
+  if (flush === "sync") {
+    scheduler = job;
+  } else {
+    scheduler = () => queueJob(job);
+  }
+  const effect2 = new ReactiveEffect(getter, scheduler);
   if (cb) {
     if (immediate) {
       job();
@@ -709,14 +714,43 @@ function traverse(value, seen) {
   return value;
 }
 
+// packages/runtime-core/src/componentProps.ts
+function initProps(instance, rawProps, isStateful) {
+  const props = {};
+  const attrs = {};
+  const options = instance.propsOptions;
+  if (rawProps) {
+    for (let key in rawProps) {
+      if (isReservedProp(key))
+        continue;
+      const value = rawProps[key];
+      if (hasOwn(options, key)) {
+        props[key] = value;
+      } else {
+        attrs[key] = value;
+      }
+    }
+  }
+  if (isStateful) {
+    instance.props = shallowReactive(props);
+  } else {
+    if (!instance.type.props) {
+      instance.props = attrs;
+    } else {
+      instance.props = props;
+    }
+  }
+}
+
 // packages/runtime-core/src/components.ts
 var uid = 0;
 function createComponentInstance(vnode, parent) {
+  const { type } = vnode;
   const instance = {
     vnode,
     parent,
     root: null,
-    type: vnode.type,
+    type,
     uid: uid++,
     data: EMPTY_OBJ,
     props: EMPTY_OBJ,
@@ -726,6 +760,8 @@ function createComponentInstance(vnode, parent) {
     setupState: EMPTY_OBJ,
     // ctx: EMPTY_OBJ,
     accessCache: EMPTY_OBJ,
+    // 传给组件的props
+    propsOptions: type.props || EMPTY_OBJ,
     emit: null,
     proxy: null,
     update: null,
@@ -742,6 +778,7 @@ function isStatefulComponent(instance) {
 }
 function setupComponent(instance) {
   const isStateful = isStatefulComponent(instance);
+  initProps(instance, instance.vnode.props, isStateful);
   const setupResult = isStateful ? setupStatefulComponent(instance) : null;
   return setupResult;
 }
@@ -1328,9 +1365,11 @@ export {
   isRef,
   isSameVNodeType,
   isVNode,
+  nextTick,
   normalizeVNode,
   onScopeDispose,
   proxyRefs,
+  queueJob,
   reactive,
   reactiveMap,
   readonly,

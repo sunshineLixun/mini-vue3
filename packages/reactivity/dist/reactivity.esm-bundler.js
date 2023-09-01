@@ -17,9 +17,15 @@ var NOOP = () => {
 var isArray = Array.isArray;
 var isMap = (val) => toTypeString(val) === "[object Map]";
 var isSet = (val) => toTypeString(val) === "[object Set]";
+var isString = (val) => typeof val === "string";
 var objectToString = Object.prototype.toString;
 var toTypeString = (value) => objectToString.call(value);
 var isPlainObject = (val) => toTypeString(val) === "[object Object]";
+var isNoEmptyValue = (val) => val !== void 0 || val !== null;
+var extend = Object.assign;
+var EMPTY_OBJ = {};
+var onRE = /^on[^a-z]/;
+var isOn = (key) => onRE.test(key);
 var isReservedProp = makeMap(",key,ref");
 
 // packages/reactivity/src/dep.ts
@@ -354,7 +360,6 @@ function createGetter(isReadonly2 = false, shallow = false) {
     }
     const res = Reflect.get(target, key, receiver);
     if (!isReadonly2) {
-      console.log("track");
       track(target, key);
     }
     if (shallow) {
@@ -526,6 +531,176 @@ function callWithErrorHandling(fn, args) {
   return res;
 }
 
+// packages/runtime-core/src/scheduler.ts
+var queue = [];
+var isFlushing = false;
+var resolvedPromise = Promise.resolve();
+function nextTick(fn) {
+  const p = resolvedPromise;
+  return fn ? p.then(this ? fn.bind(this) : fn) : p;
+}
+function queueJob(job) {
+  if (!queue.length || !queue.includes(job)) {
+    queue.push(job);
+  }
+  if (!isFlushing) {
+    isFlushing = true;
+    resolvedPromise.then(() => {
+      try {
+        queue.forEach((job2) => callWithErrorHandling(job2, null));
+      } finally {
+        isFlushing = false;
+        queue.length = 0;
+      }
+    });
+  }
+}
+
+// packages/runtime-core/src/componentPublicInstance.ts
+var publicPropertiesMap = extend(/* @__PURE__ */ Object.create(null), {
+  // 列举几个常用的的 属性
+  $: (i) => i,
+  $el: (i) => i.vnode.el,
+  $data: (i) => i.data,
+  $props: (i) => i.props,
+  $attrs: (i) => i.attrs,
+  $slots: (i) => i.slots,
+  $refs: (i) => i.refs,
+  $emit: (i) => i.emit,
+  $options: (i) => i.type,
+  $forceUpdate: (i) => queueJob(i.update),
+  $nextTick: (i) => nextTick.bind(i.proxy),
+  $watch: () => NOOP
+});
+
+// packages/runtime-core/src/vnode.ts
+var Fragment = Symbol.for("v-fgt");
+var Text = Symbol.for("v-txt");
+var Comment = Symbol.for("v-cmt");
+
+// packages/runtime-dom/src/nodeOps.ts
+var nodeOps = {
+  // 增加、插入
+  insert(child, parent, anchor) {
+    parent.insertBefore(child, anchor || null);
+  },
+  // 删除
+  remove(child) {
+    const parent = child.parentNode;
+    if (parent) {
+      parent.removeChild(child);
+    }
+  },
+  createElement(tagName) {
+    return document.createElement(tagName);
+  },
+  createText(text) {
+    return document.createTextNode(text);
+  },
+  createComment(data) {
+    return document.createComment(data);
+  },
+  setText(el, text) {
+    el.nodeValue = text;
+  },
+  setElementText(el, text) {
+    el.textContent = text;
+  },
+  parentNode(node) {
+    return node.parentNode;
+  },
+  nextSibling(node) {
+    return node.nextSibling;
+  },
+  quertSelector(selector) {
+    return document.querySelector(selector);
+  }
+};
+
+// packages/runtime-dom/src/modules/class.ts
+function patchClass(el, value) {
+  if (isNoEmptyValue(value)) {
+    el.className = value;
+  } else {
+    el.removeAttribute("class");
+  }
+}
+
+// packages/runtime-dom/src/modules/style.ts
+function patchStyle(el, prev, next) {
+  const style = el.style;
+  const isCssString = isString(next);
+  const isPrevCssString = isString(prev);
+  if (next && !isCssString) {
+    if (prev && !isPrevCssString) {
+      for (const key in prev) {
+        if (next[key] == null) {
+          style[key] = "";
+        }
+      }
+    }
+    for (const key in next) {
+      style[key] = next[key];
+    }
+  } else {
+    if (isCssString) {
+      if (prev != next) {
+        style.cssText = next;
+      }
+    } else if (prev) {
+      el.removeAttribute("style");
+    }
+  }
+}
+
+// packages/runtime-dom/src/modules/events.ts
+function patchEvent(el, key, nextValue) {
+  const name = key.slice(2).toLowerCase();
+  const invokers = el._vei || (el._vei = {});
+  const existingInvoker = invokers[name];
+  if (nextValue && existingInvoker) {
+    existingInvoker.value = nextValue;
+  } else {
+    if (nextValue) {
+      const invoker = invokers[name] = createInvoker(nextValue);
+      el.addEventListener(name, invoker);
+    } else if (existingInvoker) {
+      el.removeEventListener(name, existingInvoker);
+      invokers[name] = null;
+    }
+  }
+}
+function createInvoker(initialValue) {
+  const invoker = (e) => invoker.value(e);
+  invoker.value = initialValue;
+  return invoker;
+}
+
+// packages/runtime-dom/src/modules/attrs.ts
+function patchAttrs(el, key, nextValue) {
+  if (isNoEmptyValue(nextValue)) {
+    el.setAttribute(key, nextValue);
+  } else {
+    el.removeAttribute(key);
+  }
+}
+
+// packages/runtime-dom/src/patchProp.ts
+var patchProp = (el, key, preValue, nextValue) => {
+  if (key === "class") {
+    patchClass(el, nextValue);
+  } else if (key === "style") {
+    patchStyle(el, preValue, nextValue);
+  } else if (isOn(key)) {
+    patchEvent(el, key, nextValue);
+  } else {
+    patchAttrs(el, key, nextValue);
+  }
+};
+
+// packages/runtime-dom/src/index.ts
+var rendererOptions = extend(nodeOps, { patchProp });
+
 // packages/reactivity/src/watch.ts
 var INITIAL_WATCHER_VALUE = {};
 function watchEffect(effect2, options) {
@@ -534,7 +709,7 @@ function watchEffect(effect2, options) {
 function watch(source, cb, options) {
   return doWatch(source, cb, options);
 }
-function doWatch(source, cb, { immediate, deep } = {}) {
+function doWatch(source, cb, { immediate, deep, flush } = EMPTY_OBJ) {
   let getter;
   if (isRef(source)) {
     getter = () => source.value;
@@ -590,7 +765,13 @@ function doWatch(source, cb, { immediate, deep } = {}) {
       effect2.run();
     }
   };
-  const effect2 = new ReactiveEffect(getter, job);
+  let scheduler;
+  if (flush === "sync") {
+    scheduler = job;
+  } else {
+    scheduler = () => queueJob(job);
+  }
+  const effect2 = new ReactiveEffect(getter, scheduler);
   if (cb) {
     if (immediate) {
       job();

@@ -6,6 +6,7 @@ import { VNode } from './vnode';
 import { callWithErrorHandling } from './errorHandling';
 import { PublicInstanceProxyHandlers } from './componentPublicInstance';
 import { proxyRefs, shallowReactive } from '@vue/reactivity';
+import { initProps } from './componentProps';
 
 export type Component = any;
 
@@ -17,11 +18,12 @@ export function createComponentInstance(
 	vnode: VNode,
 	parent: ComponentInternalInstance | null
 ): ComponentInternalInstance {
+	const { type } = vnode;
 	const instance: ComponentInternalInstance = {
 		vnode,
 		parent,
 		root: null,
-		type: vnode.type,
+		type,
 		uid: uid++,
 
 		data: EMPTY_OBJ,
@@ -35,6 +37,9 @@ export function createComponentInstance(
 		// ctx: EMPTY_OBJ,
 
 		accessCache: EMPTY_OBJ,
+
+		// 传给组件的props
+		propsOptions: type.props || EMPTY_OBJ,
 
 		emit: null,
 
@@ -60,9 +65,9 @@ export function isStatefulComponent(instance: ComponentInternalInstance) {
 }
 
 export function setupComponent(instance: ComponentInternalInstance) {
-	//TODO: props slots
-
 	const isStateful = isStatefulComponent(instance);
+
+	initProps(instance, instance.vnode.props, isStateful);
 
 	const setupResult = isStateful ? setupStatefulComponent(instance) : null;
 	return setupResult;

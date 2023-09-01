@@ -36,7 +36,6 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
 		if (key[0] !== '$') {
 			// 获取data函数中的值
 			if (data !== EMPTY_OBJ && hasOwn(data, key)) {
-				// TODO:缓存
 				accessCache[key] = AccessTypes.DATA;
 				return data[key];
 			} else if (props !== EMPTY_OBJ && hasOwn(props, key)) {

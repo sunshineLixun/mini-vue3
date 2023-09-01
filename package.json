@@ -4,6 +4,7 @@
   "description": "",
   "types": "module",
   "scripts": {
+    "dev": "node scripts/dev.js",
     "dev:reactive": "node scripts/dev.js reactivity -f esm-bundler",
     "dev:shared": "node scripts/dev.js shared -f esm-bundler",
     "dev:runtime-core": "node scripts/dev.js runtime-core -f esm-bundler",

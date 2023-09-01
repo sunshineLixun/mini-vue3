@@ -3,9 +3,15 @@ import minimist from 'minimist';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+// import fs from 'node:fs';
 
 const require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// const packagesPath = resolve(__dirname, '../packages');
+// async function getAllPackages() {
+// 	return await fs.promises.readdir(packagesPath, 'utf-8');
+// }
 
 const args = minimist(process.argv.slice(2));
 

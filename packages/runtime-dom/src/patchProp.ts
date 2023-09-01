@@ -8,7 +8,6 @@ import { patchEvent } from './modules/events';
 import { patchAttrs } from './modules/attrs';
 
 export const patchProp: RendererOptions['patchProp'] = (el: Element, key: string, preValue: any, nextValue: any) => {
-	// TODO: patchProp
 	if (key === 'class') {
 		patchClass(el, nextValue);
 	} else if (key === 'style') {
