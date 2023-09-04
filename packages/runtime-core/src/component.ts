@@ -5,7 +5,7 @@ import { ComponentInternalInstance, InternalRenderFunction } from './componentRe
 import { VNode } from './vnode';
 import { callWithErrorHandling } from './errorHandling';
 import { PublicInstanceProxyHandlers } from './componentPublicInstance';
-import { proxyRefs, shallowReactive } from '@vue/reactivity';
+import { proxyRefs, shallowReactive, track } from '@vue/reactivity';
 import { initProps } from './componentProps';
 
 export type Component = any;
@@ -54,12 +54,30 @@ export function createComponentInstance(
 
 		effect: null,
 
-		isMounted: false
+		isMounted: false,
+
+		exposed: null,
+
+		attrsProxy: null,
+
+		setupContext: null
 	};
 
 	instance.root = parent ? parent.root : instance;
+	//TODO: emit
 
 	return instance;
+}
+
+function createSetupContext(instance: ComponentInternalInstance) {
+	return {
+		slots: instance.slots,
+		emits: instance.emit,
+		get attrs() {
+			return getAttrsProxy(instance);
+		},
+		expose: (exposed: Record<string, any>) => (instance.exposed = exposed || {})
+	};
 }
 
 export function isStatefulComponent(instance: ComponentInternalInstance) {
@@ -84,7 +102,12 @@ export function setupStatefulComponent(instance: ComponentInternalInstance) {
 	instance.proxy = new Proxy(instance, PublicInstanceProxyHandlers);
 
 	if (setup) {
-		const setupResult = callWithErrorHandling(setup);
+		// 获取setup函数形参的length > 1，传入setupContext
+		// 比如用户会这样 setup(props, context)  setup(props, { emit, expose })
+		// 当setup只有一个形参 时，只传入props
+		const setupContext = (instance.setupContext = setup.length > 1 ? createSetupContext(instance) : null);
+
+		const setupResult = callWithErrorHandling(setup, [instance.props, setupContext]);
 
 		handleSetupResult(instance, setupResult);
 
@@ -124,6 +147,7 @@ export function handleSetupResult(instance: ComponentInternalInstance, setupResu
 		 * 	}
 		 * }
 		 */
+		// 自动对ref对象进行解包，可以再template中不用.value取值
 		instance.setupState = proxyRefs(setupResult);
 	}
 	finishComponentSetup(instance);
@@ -137,4 +161,17 @@ export function finishComponentSetup(instance: ComponentInternalInstance) {
 		// 拿到render函数
 		instance.render = (Component.render || NOOP) as InternalRenderFunction;
 	}
+}
+
+function getAttrsProxy(instance: ComponentInternalInstance) {
+	return (
+		instance.attrsProxy ||
+		(instance.attrsProxy = new Proxy(instance.attrs, {
+			get: (target, key: string) => {
+				// 当用户访问attrs，就会对$attrs触发依赖收集
+				track(instance, '$attrs');
+				return target[key];
+			}
+		}))
+	);
 }

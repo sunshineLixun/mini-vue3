@@ -10,7 +10,7 @@ import {
 	Fragment
 } from '@vue/runtime-core';
 import { EMPTY_OBJ, ShapeFlags, isReservedProp } from '@vue/shared';
-import { createComponentInstance, setupComponent } from './components';
+import { createComponentInstance, setupComponent } from './component';
 import { ComponentInternalInstance, renderComponentRoot, shouldUpdateComponent } from './componentRenderUtils';
 import { ReactiveEffect } from '@vue/reactivity';
 import { SchedulerJob, queueJob } from './scheduler';

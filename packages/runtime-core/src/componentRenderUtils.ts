@@ -66,12 +66,19 @@ export interface ComponentInternalInstance {
 	accessCache: Data | null;
 	emit: () => void;
 
+	setupContext: any;
+
 	// 其实就是当前组件 this
 	proxy: ComponentPublicInstance | null;
 
-	// ctx: Data;
+	// 缓存expose抛出的事件
+	exposed: Record<string, any> | null;
 
+	// ctx: Data;
 	render: InternalRenderFunction | null;
+
+	// 访问attrs就是访问attrsProxy代理对象
+	attrsProxy: Data | null;
 
 	// 组件强制更新的方法
 	// 执行就是 effect.run 方法

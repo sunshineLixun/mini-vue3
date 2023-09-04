@@ -11,7 +11,7 @@
 			// import { h, render, reactive } from '../../../node_modules/vue/dist/vue.esm-browser.js';
 			import { h, render, reactive, toRefs, Fragment } from './runtime-core.esm-bundler.js';
 
-			// 1. data
+			// demo 1. data
 			// const ParentComponent = {
 			// 	data() {
 			// 		return {
@@ -30,7 +30,7 @@
 			// };
 			// render(h(ParentComponent), app);
 
-			// 2. setup
+			// demo 2. setup return 响应式数据
 			// const Com = {
 			// 	setup() {
 			// 		const state = reactive({
@@ -52,7 +52,7 @@
 			// };
 			// render(h(Com), app);
 
-			// 3 setup return
+			// demo 3 setup return 渲染函数
 			// const Com = {
 			// 	setup() {
 			// 		const state = reactive({
@@ -68,18 +68,43 @@
 			// };
 			// render(h(Com), app);
 
-			// 4 component update
+			// demo 4.1 child component
+			// const Child = {
+			// 	props: {
+			// 		age: Number
+			// 	},
+			// 	render() {
+			// 		return h('div', `${this.age}`);
+			// 	}
+			// };
+
+			// const Com = {
+			// 	setup() {
+			// 		const state = reactive({
+			// 			age: 1
+			// 		});
+
+			// 		const onClick = () => {
+			// 			state.age++;
+			// 		};
+
+			// 		return () => h(Fragment, [h('button', { onClick }, '点我改变子组件的age'), h(Child, { age: state.age })]);
+			// 	}
+			// };
+			// render(h(Com), app);
+
+			// demo 4.2 child setup component props
 			const Child = {
 				props: {
 					age: Number
 				},
-				render() {
-					return h('div', `${this.age}`);
+				setup(proxy) {
+					return () => h('div', `${proxy.age}`);
 				}
 			};
 
 			const Com = {
-				setup() {
+				setup(proxy) {
 					const state = reactive({
 						age: 1
 					});
@@ -87,7 +112,6 @@
 					const onClick = () => {
 						state.age++;
 					};
-
 					return () => h(Fragment, [h('button', { onClick }, '点我改变子组件的age'), h(Child, { age: state.age })]);
 				}
 			};

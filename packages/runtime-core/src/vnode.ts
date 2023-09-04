@@ -1,7 +1,7 @@
 import { Ref } from '@vue/reactivity';
 import { ShapeFlags, isArray, isFunction, isObject, isString } from '@vue/shared';
 import { RendererNode } from './renderer';
-import { Component } from './components';
+import { Component } from './component';
 import { ComponentInternalInstance } from './componentRenderUtils';
 
 // ref='xxx'

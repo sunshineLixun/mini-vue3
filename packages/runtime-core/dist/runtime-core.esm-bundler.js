@@ -40,79 +40,6 @@ function callWithErrorHandling(fn, args) {
   return res;
 }
 
-// packages/runtime-core/src/scheduler.ts
-var queue = [];
-var isFlushing = false;
-var resolvedPromise = Promise.resolve();
-function nextTick(fn) {
-  const p = resolvedPromise;
-  return fn ? p.then(this ? fn.bind(this) : fn) : p;
-}
-function queueJob(job) {
-  if (!queue.length || !queue.includes(job)) {
-    queue.push(job);
-  }
-  if (!isFlushing) {
-    isFlushing = true;
-    resolvedPromise.then(() => {
-      try {
-        queue.forEach((job2) => callWithErrorHandling(job2, null));
-      } finally {
-        isFlushing = false;
-        queue.length = 0;
-      }
-    });
-  }
-}
-
-// packages/runtime-core/src/componentPublicInstance.ts
-var publicPropertiesMap = extend(/* @__PURE__ */ Object.create(null), {
-  // 列举几个常用的的 属性
-  $: (i) => i,
-  $el: (i) => i.vnode.el,
-  $data: (i) => i.data,
-  $props: (i) => i.props,
-  $attrs: (i) => i.attrs,
-  $slots: (i) => i.slots,
-  $refs: (i) => i.refs,
-  $emit: (i) => i.emit,
-  $options: (i) => i.type,
-  $forceUpdate: (i) => queueJob(i.update),
-  $nextTick: (i) => nextTick.bind(i.proxy),
-  $watch: () => NOOP
-});
-var PublicInstanceProxyHandlers = {
-  get(instance, key) {
-    const { accessCache, data, props, setupState } = instance;
-    if (key[0] !== "$") {
-      if (data !== EMPTY_OBJ && hasOwn(data, key)) {
-        accessCache[key] = 2 /* DATA */;
-        return data[key];
-      } else if (props !== EMPTY_OBJ && hasOwn(props, key)) {
-        return props[key];
-      } else if (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) {
-        return setupState[key];
-      }
-    }
-    const publicGetter = publicPropertiesMap[key];
-    if (publicGetter) {
-      return publicGetter(instance);
-    }
-  },
-  set(instance, key, newValue) {
-    const { data, props, setupState } = instance;
-    if (data !== EMPTY_OBJ && hasOwn(data, key)) {
-      data[key] = newValue;
-      return true;
-    } else if (hasOwn(props, key)) {
-      console.warn("props is readonly");
-      return false;
-    } else if (hasOwn(setupState, key)) {
-      return true;
-    }
-  }
-};
-
 // packages/reactivity/src/dep.ts
 var createDep = (effects) => {
   const dep = new Set(effects);
@@ -714,6 +641,83 @@ function traverse(value, seen) {
   return value;
 }
 
+// packages/runtime-core/src/scheduler.ts
+var queue = [];
+var isFlushing = false;
+var resolvedPromise = Promise.resolve();
+function nextTick(fn) {
+  const p = resolvedPromise;
+  return fn ? p.then(this ? fn.bind(this) : fn) : p;
+}
+function queueJob(job) {
+  if (!queue.length || !queue.includes(job)) {
+    queue.push(job);
+  }
+  if (!isFlushing) {
+    isFlushing = true;
+    resolvedPromise.then(() => {
+      try {
+        queue.forEach((job2) => callWithErrorHandling(job2, null));
+      } finally {
+        isFlushing = false;
+        queue.length = 0;
+      }
+    });
+  }
+}
+
+// packages/runtime-core/src/componentPublicInstance.ts
+var publicPropertiesMap = extend(/* @__PURE__ */ Object.create(null), {
+  // 列举几个常用的的 属性
+  $: (i) => i,
+  $el: (i) => i.vnode.el,
+  $data: (i) => i.data,
+  $props: (i) => i.props,
+  $attrs: (i) => i.attrs,
+  $slots: (i) => i.slots,
+  $refs: (i) => i.refs,
+  $emit: (i) => i.emit,
+  $options: (i) => i.type,
+  $forceUpdate: (i) => queueJob(i.update),
+  $nextTick: (i) => nextTick.bind(i.proxy),
+  $watch: () => NOOP
+});
+var PublicInstanceProxyHandlers = {
+  get(instance, key) {
+    const { accessCache, data, props, setupState } = instance;
+    if (key[0] !== "$") {
+      if (data !== EMPTY_OBJ && hasOwn(data, key)) {
+        accessCache[key] = 2 /* DATA */;
+        return data[key];
+      } else if (props !== EMPTY_OBJ && hasOwn(props, key)) {
+        return props[key];
+      } else if (setupState !== EMPTY_OBJ && hasOwn(setupState, key)) {
+        return setupState[key];
+      }
+    }
+    const publicGetter = publicPropertiesMap[key];
+    if (publicGetter) {
+      if (key === "$attrs") {
+        track(instance, key);
+      }
+      return publicGetter(instance);
+    }
+  },
+  set(instance, key, newValue) {
+    const { data, props, setupState } = instance;
+    if (data !== EMPTY_OBJ && hasOwn(data, key)) {
+      data[key] = newValue;
+      return true;
+    } else if (hasOwn(props, key)) {
+      console.warn("props is readonly");
+      return false;
+    } else if (hasOwn(setupState, key)) {
+      setupState[key] = newValue;
+      return true;
+    }
+  }
+};
+
 // packages/runtime-core/src/componentProps.ts
 function initProps(instance, rawProps, isStateful) {
   const props = {};
@@ -757,7 +761,7 @@ function updateProps(instance, rawProps, rawPrevProps) {
   }
 }
 
-// packages/runtime-core/src/components.ts
+// packages/runtime-core/src/component.ts
 var uid = 0;
 function createComponentInstance(vnode, parent) {
   const { type } = vnode;
@@ -784,10 +788,23 @@ function createComponentInstance(vnode, parent) {
     subTree: null,
     next: null,
     effect: null,
-    isMounted: false
+    isMounted: false,
+    exposed: null,
+    attrsProxy: null,
+    setupContext: null
   };
   instance.root = parent ? parent.root : instance;
   return instance;
+}
+function createSetupContext(instance) {
+  return {
+    slots: instance.slots,
+    emits: instance.emit,
+    get attrs() {
+      return getAttrsProxy(instance);
+    },
+    expose: (exposed) => instance.exposed = exposed || {}
+  };
 }
 function isStatefulComponent(instance) {
   return instance.vnode.shapeFlag & 4 /* STATEFUL_COMPONENT */;
@@ -803,7 +820,8 @@ function setupStatefulComponent(instance) {
   const { setup } = Component;
   instance.proxy = new Proxy(instance, PublicInstanceProxyHandlers);
   if (setup) {
-    const setupResult = callWithErrorHandling(setup);
+    const setupContext = instance.setupContext = setup.length > 1 ? createSetupContext(instance) : null;
+    const setupResult = callWithErrorHandling(setup, [instance.props, setupContext]);
     handleSetupResult(instance, setupResult);
   } else {
     if (Component.data && isFunction(Component.data)) {
@@ -825,6 +843,14 @@ function finishComponentSetup(instance) {
     const Component = instance.type;
     instance.render = Component.render || NOOP;
   }
+}
+function getAttrsProxy(instance) {
+  return instance.attrsProxy || (instance.attrsProxy = new Proxy(instance.attrs, {
+    get: (target, key) => {
+      track(instance, "$attrs");
+      return target[key];
+    }
+  }));
 }
 
 // packages/runtime-core/src/vnode.ts

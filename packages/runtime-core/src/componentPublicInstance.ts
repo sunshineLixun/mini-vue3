@@ -1,4 +1,5 @@
 import { EMPTY_OBJ, NOOP, extend, hasOwn } from '@vue/shared';
+import { track } from '@vue/reactivity';
 import { ComponentInternalInstance } from './componentRenderUtils';
 import { nextTick, queueJob } from './scheduler';
 
@@ -49,6 +50,10 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
 		// $data $props $slots ...
 		const publicGetter = publicPropertiesMap[key];
 		if (publicGetter) {
+			if (key === '$attrs') {
+				// 触发收集$attrs
+				track(instance, key);
+			}
 			return publicGetter(instance);
 		}
 	},
@@ -62,6 +67,7 @@ export const PublicInstanceProxyHandlers: ProxyHandler<any> = {
 			console.warn('props is readonly');
 			return false;
 		} else if (hasOwn(setupState, key)) {
+			setupState[key] = newValue;
 			return true;
 		}
 	}
