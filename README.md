@@ -2,7 +2,7 @@
 
 简版 vue3 实现
 
-启动项目：找到对应的目录下，[liveServer](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) 启动 dist 目录下的 html 文件
+启动项目Demo：找到对应的目录下，[liveServer](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) 启动 dist 目录下的 html 文件
 
 ## reactivity
 
@@ -24,6 +24,7 @@
 - [x] toRaw
 - [x] ref 的实现
 - [x] effectScope 的实现
+- [x] 异步更新\批处理 queueJob
 
 
 ## runtime-core
@@ -31,8 +32,10 @@
 - [x] h函数实现
 - [x] renderer函数实现
 - [x] 初次挂载element实现
-- [x] patchElement
-- [ ] diff
+- [x] patchElement (普通tag标签、Component、Text、Common、Fragment)
+- [x] 元素的diff算法
+- [x] 组件的更新流程
+- [x] nextTick
 
 ## runtime-dom
 
@@ -41,6 +44,12 @@
 - [x] class
 - [x] style
 - [x] props
+- [x] attrs
+
+
+## compiler-dom
+
+- [x] AST
 
 
 ## 接入 vitest

@@ -50,6 +50,8 @@ export function createComponentInstance(
 
 		subTree: null,
 
+		next: null,
+
 		effect: null,
 
 		isMounted: false
@@ -78,6 +80,7 @@ export function setupStatefulComponent(instance: ComponentInternalInstance) {
 	// vue3 setup
 	const { setup } = Component;
 
+	// 访问组件的props state setupState 都是通过代理组件实例来做。
 	instance.proxy = new Proxy(instance, PublicInstanceProxyHandlers);
 
 	if (setup) {
@@ -90,6 +93,8 @@ export function setupStatefulComponent(instance: ComponentInternalInstance) {
 		if (Component.data && isFunction(Component.data)) {
 			// 简易的支持下vue2写法
 			// data() { return {} }
+			// props data都是浅代理。
+			// 绑定this指向
 			instance.data = shallowReactive(Component.data.call(instance.proxy));
 		}
 

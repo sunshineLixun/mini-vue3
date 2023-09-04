@@ -80,6 +80,9 @@ export interface ComponentInternalInstance {
 	// 自己在父组件的vnode
 	vnode: VNode;
 
+	// 组件更新时，保存新的vnode
+	next: VNode | null;
+
 	// 自己的vnode
 	subTree: VNode;
 
@@ -112,4 +115,41 @@ export function renderComponentRoot(instance: ComponentInternalInstance): VNode 
 		result = createVNode(Comment);
 	}
 	return result;
+}
+
+export function shouldUpdateComponent(prevVNode: VNode, nextVNode: VNode): boolean {
+	// TODO: emit
+	if (prevVNode === nextVNode) {
+		return false;
+	}
+
+	// 如果没有老属性，直接判断新属性
+	if (!prevVNode) {
+		return !!nextVNode;
+	}
+
+	// 没有新属性，就更新
+	if (!nextVNode) {
+		return true;
+	}
+
+	return hasPropsChanged(prevVNode.props, nextVNode.props);
+}
+
+export function hasPropsChanged(prevProps: Data, nextProps: Data): boolean {
+	const newKeys = Object.keys(nextProps);
+	const oldKeys = Object.keys(prevProps);
+	// 当新老属性的key都不一样，一定是true
+	if (newKeys.length !== oldKeys.length) {
+		return true;
+	}
+
+	// 当新老props属性数量一致时，就比较对应的value
+	for (let i = 0; i < newKeys.length; i++) {
+		const key = newKeys[i];
+		if (prevProps[key] !== nextProps[key]) {
+			return true;
+		}
+	}
+	return false;
 }

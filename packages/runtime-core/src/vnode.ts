@@ -141,6 +141,7 @@ function createBaseVNode(
 		children,
 		el: null, // 真实节点 初始化为null
 		anchor: null,
+		component: null,
 		shapeFlag
 	};
 	// 处理子类型和自己的类型

@@ -718,6 +718,18 @@ function traverse(value, seen) {
 function initProps(instance, rawProps, isStateful) {
   const props = {};
   const attrs = {};
+  setFullProps(instance, rawProps, props, attrs);
+  if (isStateful) {
+    instance.props = shallowReactive(props);
+  } else {
+    if (!instance.type.props) {
+      instance.props = attrs;
+    } else {
+      instance.props = props;
+    }
+  }
+}
+function setFullProps(instance, rawProps, props, attrs) {
   const options = instance.propsOptions;
   if (rawProps) {
     for (let key in rawProps) {
@@ -731,13 +743,16 @@ function initProps(instance, rawProps, isStateful) {
       }
     }
   }
-  if (isStateful) {
-    instance.props = shallowReactive(props);
-  } else {
-    if (!instance.type.props) {
-      instance.props = attrs;
-    } else {
-      instance.props = props;
+}
+function updateProps(instance, rawProps, rawPrevProps) {
+  const { props, attrs } = instance;
+  setFullProps(instance, rawProps, props, attrs);
+  for (const key in rawProps) {
+    rawPrevProps[key] = rawProps[key];
+  }
+  for (const key in rawPrevProps) {
+    if (!hasOwn(rawProps, key)) {
+      delete rawPrevProps[key];
     }
   }
 }
@@ -767,6 +782,7 @@ function createComponentInstance(vnode, parent) {
     update: null,
     render: null,
     subTree: null,
+    next: null,
     effect: null,
     isMounted: false
   };
@@ -840,6 +856,7 @@ function createBaseVNode(type, props = null, children = null, shapeFlag = type =
     el: null,
     // 真实节点 初始化为null
     anchor: null,
+    component: null,
     shapeFlag
   };
   if (children) {
@@ -882,6 +899,32 @@ function renderComponentRoot(instance) {
     result = createVNode(Comment);
   }
   return result;
+}
+function shouldUpdateComponent(prevVNode, nextVNode) {
+  if (prevVNode === nextVNode) {
+    return false;
+  }
+  if (!prevVNode) {
+    return !!nextVNode;
+  }
+  if (!nextVNode) {
+    return true;
+  }
+  return hasPropsChanged(prevVNode.props, nextVNode.props);
+}
+function hasPropsChanged(prevProps, nextProps) {
+  const newKeys = Object.keys(nextProps);
+  const oldKeys = Object.keys(prevProps);
+  if (newKeys.length !== oldKeys.length) {
+    return true;
+  }
+  for (let i = 0; i < newKeys.length; i++) {
+    const key = newKeys[i];
+    if (prevProps[key] !== nextProps[key]) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // packages/runtime-core/src/renderer.ts
@@ -1102,8 +1145,15 @@ function baseCreateRenderer(options) {
     if (n1 === null) {
       mountComponent(n2, container, anchor, parentComponent);
     } else {
-      updateComponent();
+      updateComponent(n1, n2);
     }
+  };
+  const updateComponentPreRender = (instance, nextVNode) => {
+    nextVNode.component = instance;
+    const prevProps = instance.vnode.props;
+    instance.vnode = nextVNode;
+    instance.next = null;
+    updateProps(instance, nextVNode.props, prevProps);
   };
   const setupRenderEffect = (instance, initialVNode, container, anchor) => {
     const componentUpdateFn = () => {
@@ -1113,10 +1163,18 @@ function baseCreateRenderer(options) {
         initialVNode.el = subTree.el;
         instance.isMounted = true;
       } else {
+        let { next, vnode } = instance;
+        if (next) {
+          next.el = vnode.el;
+          updateComponentPreRender(instance, next);
+        } else {
+          next = vnode;
+        }
         const nextTree = renderComponentRoot(instance);
         const prevTree = instance.subTree;
         instance.subTree = nextTree;
         patch(prevTree, nextTree, hostParentNode(prevTree.el), getNextHostNode(prevTree), instance);
+        next.el = nextTree.el;
       }
     };
     const effect2 = instance.effect = new ReactiveEffect(componentUpdateFn, () => queueJob(update));
@@ -1129,7 +1187,15 @@ function baseCreateRenderer(options) {
     setupComponent(instance);
     setupRenderEffect(instance, initialVNode, container, anchor);
   };
-  const updateComponent = () => {
+  const updateComponent = (n1, n2) => {
+    const instance = n2.component = n1.component;
+    if (shouldUpdateComponent(n1, n2)) {
+      instance.next = n2;
+      instance.update();
+    } else {
+      n2.el = n1.el;
+      instance.vnode = n2;
+    }
   };
   const patch = (n1, n2, container, anchor = null, parentComponent) => {
     if (n1 === n2) {

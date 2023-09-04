@@ -11,9 +11,10 @@ import {
 } from '@vue/runtime-core';
 import { EMPTY_OBJ, ShapeFlags, isReservedProp } from '@vue/shared';
 import { createComponentInstance, setupComponent } from './components';
-import { ComponentInternalInstance, renderComponentRoot } from './componentRenderUtils';
+import { ComponentInternalInstance, renderComponentRoot, shouldUpdateComponent } from './componentRenderUtils';
 import { ReactiveEffect } from '@vue/reactivity';
 import { SchedulerJob, queueJob } from './scheduler';
+import { updateProps } from './componentProps';
 
 export interface Renderer<HostElement = RendererElement> {
 	render: RootRenderFunction<HostElement>;
@@ -558,10 +559,27 @@ function baseCreateRenderer(options: RendererOptions) {
 
 	const processComponent: ProcessComponentFn = (n1, n2, container, anchor, parentComponent) => {
 		if (n1 === null) {
+			// n1为null, 代表挂载组件
 			mountComponent(n2, container, anchor, parentComponent);
 		} else {
-			updateComponent();
+			// 组件的props发生变化，更新组件
+			updateComponent(n1, n2);
 		}
+	};
+
+	// 组件更新前做的一些操作：更新props 更新children
+
+	const updateComponentPreRender = (instance: ComponentInternalInstance, nextVNode: VNode) => {
+		// 新的vnode保存当前组件实例
+		nextVNode.component = instance;
+		// 旧的proos
+		const prevProps = instance.vnode.props;
+		// 实例上的vnode保存最新的
+		instance.vnode = nextVNode;
+
+		// 清空next，防止后续一直以为有next节点，导致走更新方法
+		instance.next = null;
+		updateProps(instance, nextVNode.props, prevProps);
 	};
 
 	// 重点: 组件关联effect
@@ -583,6 +601,16 @@ function baseCreateRenderer(options: RendererOptions) {
 				// 2. 挂载组件成功
 				instance.isMounted = true;
 			} else {
+				let { next, vnode } = instance;
+				// 说明组件props发生了更新
+				if (next) {
+					// 拿到真实dom元素
+					next.el = vnode.el;
+					updateComponentPreRender(instance, next);
+				} else {
+					// 如果没有，更新成最新的vnode
+					next = vnode;
+				}
 				// 当组件内部的响应式数据发生变化时，执行
 				const nextTree = renderComponentRoot(instance);
 				// 获取老节点
@@ -590,6 +618,9 @@ function baseCreateRenderer(options: RendererOptions) {
 				// 更新老节点
 				instance.subTree = nextTree;
 				patch(prevTree, nextTree, hostParentNode(prevTree.el!), getNextHostNode(prevTree), instance);
+
+				// 保存下最新的el
+				next.el = nextTree.el;
 			}
 		};
 		// 重点: 创建effect
@@ -619,7 +650,23 @@ function baseCreateRenderer(options: RendererOptions) {
 	};
 
 	// 组件的props变更导致组件更新
-	const updateComponent = () => {};
+	const updateComponent = (n1: VNode, n2: VNode) => {
+		// 组件的props更新，比较新旧props变化，执行组件实例上的update方法，
+		// 就会执行到ReactiveEffect的fn方法
+		// n2新的vnode中保存旧的vnode组件实例, 同时拿到组件实例
+		const instance = (n2.component = n1.component);
+		// 在执行update之前，需要判断下属性有没有变化
+		if (shouldUpdateComponent(n1, n2)) {
+			// next保存下新的vnode，这个属性会在 effect 中用到
+			instance.next = n2;
+			instance.update();
+		} else {
+			// 没有变化时， 保存下就得vnode对应的真实节点
+			// 实例vnode属性更新成新的vnode
+			n2.el = n1.el;
+			instance.vnode = n2;
+		}
+	};
 
 	const patch: PatchFn = (n1, n2, container, anchor = null, parentComponent) => {
 		// 相同的节点，直接返回
