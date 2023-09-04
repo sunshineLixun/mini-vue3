@@ -94,11 +94,36 @@
 			// render(h(Com), app);
 
 			// demo 4.2 child setup component props
+			// const Child = {
+			// 	props: {
+			// 		age: Number
+			// 	},
+			// 	setup(proxy) {
+			// 		return () => h('div', `${proxy.age}`);
+			// 	}
+			// };
+
+			// const Com = {
+			// 	setup(proxy) {
+			// 		const state = reactive({
+			// 			age: 1
+			// 		});
+
+			// 		const onClick = () => {
+			// 			state.age++;
+			// 		};
+			// 		return () => h(Fragment, [h('button', { onClick }, '点我改变子组件的age'), h(Child, { age: state.age })]);
+			// 	}
+			// };
+			// render(h(Com), app);
+
+			// demo 4.3 child setup context
 			const Child = {
 				props: {
 					age: Number
 				},
-				setup(proxy) {
+				setup(proxy, context) {
+					console.log(proxy, context);
 					return () => h('div', `${proxy.age}`);
 				}
 			};
@@ -106,13 +131,18 @@
 			const Com = {
 				setup(proxy) {
 					const state = reactive({
-						age: 1
+						age: 1,
+						name: 'vue3'
 					});
 
 					const onClick = () => {
 						state.age++;
 					};
-					return () => h(Fragment, [h('button', { onClick }, '点我改变子组件的age'), h(Child, { age: state.age })]);
+					return () =>
+						h(Fragment, [
+							h('button', { onClick }, '点我改变子组件的age'),
+							h(Child, { age: state.age, name: state.name })
+						]);
 				}
 			};
 			render(h(Com), app);

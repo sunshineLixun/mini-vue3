@@ -732,6 +732,7 @@ function initProps(instance, rawProps, isStateful) {
       instance.props = props;
     }
   }
+  instance.attrs = attrs;
 }
 function setFullProps(instance, rawProps, props, attrs) {
   const options = instance.propsOptions;

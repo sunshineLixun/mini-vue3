@@ -21,6 +21,7 @@ export function initProps(instance: ComponentInternalInstance, rawProps: Data | 
 			instance.props = props;
 		}
 	}
+	instance.attrs = attrs;
 }
 
 function setFullProps(instance: ComponentInternalInstance, rawProps: Data | null, props: Data, attrs: Data) {
