@@ -73,7 +73,7 @@ export function createComponentInstance(
 function createSetupContext(instance: ComponentInternalInstance) {
 	return {
 		slots: instance.slots,
-		emits: instance.emit,
+		emit: instance.emit,
 		get attrs() {
 			// proxy attrs
 			return getAttrsProxy(instance);

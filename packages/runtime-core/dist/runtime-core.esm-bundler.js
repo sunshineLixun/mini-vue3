@@ -28,6 +28,9 @@ var onRE = /^on[^a-z]/;
 var isOn = (key) => onRE.test(key);
 var isReservedProp = makeMap(",key,ref");
 var hasOwn = (val, key) => Object.prototype.hasOwnProperty.call(val, key);
+var capitalize = (str) => {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+};
 
 // packages/runtime-core/src/errorHandling.ts
 function callWithErrorHandling(fn, args) {
@@ -764,7 +767,11 @@ function updateProps(instance, rawProps, rawPrevProps) {
 
 // packages/runtime-core/src/componentEmits.ts
 function emit(instance, event, ...args) {
-  console.log(event);
+  const props = instance.vnode.props || EMPTY_OBJ;
+  let handler = props[`on${capitalize(event)}`];
+  if (handler) {
+    callWithErrorHandling(handler, args);
+  }
 }
 
 // packages/runtime-core/src/component.ts
@@ -806,7 +813,7 @@ function createComponentInstance(vnode, parent) {
 function createSetupContext(instance) {
   return {
     slots: instance.slots,
-    emits: instance.emit,
+    emit: instance.emit,
     get attrs() {
       return getAttrsProxy(instance);
     },

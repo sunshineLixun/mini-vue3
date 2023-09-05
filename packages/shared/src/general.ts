@@ -37,3 +37,8 @@ export const isReservedProp = makeMap(',key,ref');
 
 export const hasOwn = (val: object, key: string): key is keyof typeof val =>
 	Object.prototype.hasOwnProperty.call(val, key);
+
+// event 首字母转大写
+export const capitalize = (str: string) => {
+	return str.charAt(0).toUpperCase() + str.slice(1);
+};
