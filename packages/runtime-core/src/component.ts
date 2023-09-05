@@ -7,6 +7,7 @@ import { callWithErrorHandling } from './errorHandling';
 import { PublicInstanceProxyHandlers } from './componentPublicInstance';
 import { proxyRefs, shallowReactive, track } from '@vue/reactivity';
 import { initProps } from './componentProps';
+import { emit } from './componentEmits';
 
 export type Component = any;
 
@@ -64,7 +65,7 @@ export function createComponentInstance(
 	};
 
 	instance.root = parent ? parent.root : instance;
-	//TODO: emit
+	instance.emit = emit.bind(null, instance);
 
 	return instance;
 }
@@ -74,6 +75,7 @@ function createSetupContext(instance: ComponentInternalInstance) {
 		slots: instance.slots,
 		emits: instance.emit,
 		get attrs() {
+			// proxy attrs
 			return getAttrsProxy(instance);
 		},
 		expose: (exposed: Record<string, any>) => (instance.exposed = exposed || {})

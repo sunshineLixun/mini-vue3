@@ -762,6 +762,11 @@ function updateProps(instance, rawProps, rawPrevProps) {
   }
 }
 
+// packages/runtime-core/src/componentEmits.ts
+function emit(instance, event, ...args) {
+  console.log(event);
+}
+
 // packages/runtime-core/src/component.ts
 var uid = 0;
 function createComponentInstance(vnode, parent) {
@@ -795,6 +800,7 @@ function createComponentInstance(vnode, parent) {
     setupContext: null
   };
   instance.root = parent ? parent.root : instance;
+  instance.emit = emit.bind(null, instance);
   return instance;
 }
 function createSetupContext(instance) {
@@ -911,7 +917,7 @@ function cloneVNode(vnode) {
 
 // packages/runtime-core/src/componentRenderUtils.ts
 function renderComponentRoot(instance) {
-  const { type: Component, vnode, props, data, attrs, slots, setupState, emit, proxy, render: render2 } = instance;
+  const { type: Component, vnode, props, data, attrs, slots, setupState, emit: emit2, proxy, render: render2 } = instance;
   const { shapeFlag } = vnode;
   let result;
   try {
@@ -919,7 +925,7 @@ function renderComponentRoot(instance) {
       result = normalizeVNode(render2.call(proxy, proxy, props, setupState, data));
     } else if (shapeFlag & 2 /* FUNCTIONAL_COMPONENT */) {
       let render3 = Component;
-      result = normalizeVNode(render3.length > 1 ? render3(props, { attrs, slots, emit }) : render3(props, null));
+      result = normalizeVNode(render3.length > 1 ? render3(props, { attrs, slots, emit: emit2 }) : render3(props, null));
     }
   } catch (error) {
     console.log(error);

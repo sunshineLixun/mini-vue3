@@ -117,32 +117,66 @@
 			// };
 			// render(h(Com), app);
 
-			// demo 4.3 child setup context
+			// demo 4.3 child setup arrts
+			// const Child = {
+			// 	props: {
+			// 		age: Number
+			// 	},
+			// 	setup(proxy, { attrs }) {
+			// 		console.log(attrs); // proxy
+			// 		return () => h('div', `${proxy.age} + ${attrs.name}`);
+			// 	}
+			// };
+
+			// const Com = {
+			// 	setup(proxy) {
+			// 		const state = reactive({
+			// 			age: 1,
+			// 			name: 'vue3'
+			// 		});
+
+			// 		const onClick = () => {
+			// 			state.age++;
+			// 		};
+			// 		return () =>
+			// 			h(Fragment, [
+			// 				h('button', { onClick }, '点我改变子组件的age'),
+			// 				h(Child, { age: state.age, name: state.name })
+			// 			]);
+			// 	}
+			// };
+			// render(h(Com), app);
+
+			// demo 4.4 child setup emit
 			const Child = {
 				props: {
 					age: Number
 				},
-				setup(proxy, context) {
-					console.log(proxy, context);
-					return () => h('div', `${proxy.age}`);
+				setup(proxy, { emit }) {
+					const handlerAge = () => {
+						emit('ageEvent', '2');
+					};
+
+					return () => h('button', { onClick: handlerAge, style: { color: 'red' } }, `${proxy.age}`);
 				}
 			};
 
 			const Com = {
 				setup(proxy) {
 					const state = reactive({
-						age: 1,
-						name: 'vue3'
+						age: 1
 					});
 
 					const onClick = () => {
 						state.age++;
 					};
+
+					const onAgeEvent = age => {
+						console.log('子组件回传的age', age);
+					};
+
 					return () =>
-						h(Fragment, [
-							h('button', { onClick }, '点我改变子组件的age'),
-							h(Child, { age: state.age, name: state.name })
-						]);
+						h(Fragment, [h('button', { onClick }, '点我改变子组件的age'), h(Child, { age: state.age, onAgeEvent })]);
 				}
 			};
 			render(h(Com), app);
