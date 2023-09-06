@@ -213,34 +213,57 @@
 			// render(h(Com), app);
 
 			// demo 4.5 child setup emit.once
-			const Child = {
-				props: {
-					value: String
-				},
-				setup(proxy, { emit }) {
-					const handlerAge = event => {
-						emit('ageEvent', event.target.value);
-					};
+			// const Child = {
+			// 	props: {
+			// 		value: String
+			// 	},
+			// 	setup(proxy, { emit }) {
+			// 		const handlerAge = event => {
+			// 			emit('ageEvent', event.target.value);
+			// 		};
 
-					return () => h('input', { value: `${proxy.value}`, onInput: handlerAge, style: { color: 'red' } });
-				}
-			};
+			// 		return () => h('input', { value: `${proxy.value}`, onInput: handlerAge, style: { color: 'red' } });
+			// 	}
+			// };
+
+			// const Com = {
+			// 	setup(proxy) {
+			// 		const state = reactive({
+			// 			value: '1'
+			// 		});
+
+			// 		const onAgeEvent = value => {
+			// 			state.value = value;
+			// 		};
+
+			// 		return () =>
+			// 			h(Fragment, [h('div', state.value), h(Child, { value: state.value, onAgeEventOnce: onAgeEvent })]);
+			// 	}
+			// };
+			// render(h(Com), app);
+
+			// demo 4.5.1 child setup slots 是一个常量
+
+			// const Com = {
+			// 	setup(proxy, { slots }) {
+			// 		return () => h(Fragment, slots.default());
+			// 	}
+			// };
+			// render(h(Com, null, '111'), app);
+
+			// demo 4.5.2 child setup slots 对象，但值是一个常量
 
 			const Com = {
-				setup(proxy) {
-					const state = reactive({
-						value: '1'
-					});
-
-					const onAgeEvent = value => {
-						state.value = value;
-					};
-
-					return () =>
-						h(Fragment, [h('div', state.value), h(Child, { value: state.value, onAgeEventOnce: onAgeEvent })]);
+				setup(proxy, { slots }) {
+					return () => h(Fragment, slots.default());
 				}
 			};
-			render(h(Com), app);
+			render(
+				h('div', null, {
+					default: () => '333'
+				}),
+				app
+			);
 		</script>
 	</body>
 </html>

@@ -8,6 +8,7 @@ import { PublicInstanceProxyHandlers } from './componentPublicInstance';
 import { proxyRefs, shallowReactive, track } from '@vue/reactivity';
 import { initProps } from './componentProps';
 import { emit } from './componentEmits';
+import { initSlots } from './componentSlots';
 
 export type Component = any;
 
@@ -92,6 +93,8 @@ export function setupComponent(instance: ComponentInternalInstance) {
 	const isStateful = isStatefulComponent(instance);
 
 	initProps(instance, instance.vnode.props, isStateful);
+
+	initSlots(instance, instance.vnode.children);
 
 	const setupResult = isStateful ? setupStatefulComponent(instance) : null;
 	return setupResult;

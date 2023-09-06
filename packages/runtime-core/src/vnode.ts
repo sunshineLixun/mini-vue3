@@ -145,12 +145,9 @@ function createBaseVNode(
 		shapeFlag
 	};
 	// 处理子类型和自己的类型
-	if (children) {
-		// h('div', props, 'xxx') 渲染为 <div ...props>xxx</div>
-		// h('div', props, [h('span', props, 'yyyy')]) 渲染为 <div ...props><span ...props>yyyy</span></div>
-
-		vnode.shapeFlag |= isString(children) ? ShapeFlags.TEXT_CHILDREN : ShapeFlags.ARRAY_CHILDREN;
-	}
+	// h('div', props, 'xxx') 渲染为 <div ...props>xxx</div>
+	// h('div', props, [h('span', props, 'yyyy')]) 渲染为 <div ...props><span ...props>yyyy</span></div>
+	normalizeChildren(vnode, children);
 	return vnode;
 }
 
@@ -181,4 +178,35 @@ export function normalizeVNode(child: VNodeChild): VNode {
 // TODO:实现
 export function cloneVNode(vnode: VNode): VNode {
 	return vnode;
+}
+
+export function normalizeChildren(vnode: VNode, children: unknown) {
+	let type = 0;
+	if (!children) {
+		children = null;
+	} else if (isArray(children)) {
+		type = ShapeFlags.ARRAY_CHILDREN;
+	} else if (isObject(children)) {
+		if (vnode.shapeFlag & ShapeFlags.ELEMENT) {
+			// 普通元素 的children 是插槽
+			// 支持用户这么写: h('div', null, {default: () => 'slots'})
+			const slot = children.default;
+			if (isFunction(slot)) {
+				normalizeChildren(vnode, slot());
+			}
+			return;
+		} else {
+			type = ShapeFlags.SLOTS_CHILDREN;
+		}
+	} else if (isFunction(children)) {
+		// 默认插槽名称 default
+		children = { default: children };
+		type = ShapeFlags.SLOTS_CHILDREN;
+	} else {
+		children = String(children);
+		type = ShapeFlags.TEXT_CHILDREN;
+	}
+
+	vnode.children = children as VNodeNormalizedChildren;
+	vnode.shapeFlag |= type;
 }

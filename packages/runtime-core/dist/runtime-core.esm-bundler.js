@@ -785,6 +785,116 @@ function emit(instance, event, ...args) {
   }
 }
 
+// packages/runtime-core/src/vnode.ts
+var Fragment = Symbol.for("v-fgt");
+var Text = Symbol.for("v-txt");
+var Comment = Symbol.for("v-cmt");
+function isVNode(value) {
+  return value ? value.__v_isVNode === true : false;
+}
+var normalizeKey = ({ key }) => key != null ? key : null;
+var normalizeRef = ({ ref: ref2 }) => {
+  if (typeof ref2 === "number") {
+    ref2 = String(ref2);
+  }
+  return ref2;
+};
+function createVNode(type, props = null, children = null) {
+  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : isFunction(type) ? 2 /* FUNCTIONAL_COMPONENT */ : 0;
+  return createBaseVNode(type, props, children, shapeFlag);
+}
+function createBaseVNode(type, props = null, children = null, shapeFlag = type === Fragment ? 0 : 1 /* ELEMENT */) {
+  const vnode = {
+    __v_isVNode: true,
+    type,
+    props,
+    key: props && normalizeKey(props),
+    ref: props && normalizeRef(props),
+    children,
+    el: null,
+    // 真实节点 初始化为null
+    anchor: null,
+    component: null,
+    shapeFlag
+  };
+  normalizeChildren(vnode, children);
+  return vnode;
+}
+function isSameVNodeType(n1, n2) {
+  return n1.type === n2.type && n1.key === n2.key;
+}
+function normalizeVNode(child) {
+  if (child === null || typeof child === "boolean") {
+    return createVNode(Comment);
+  } else if (isArray(child)) {
+    return createVNode(Fragment, null, child.slice());
+  } else if (typeof child === "object") {
+    return cloneVNode(child);
+  } else {
+    return createVNode(Text, null, String(child));
+  }
+}
+function cloneVNode(vnode) {
+  return vnode;
+}
+function normalizeChildren(vnode, children) {
+  let type = 0;
+  if (!children) {
+    children = null;
+  } else if (isArray(children)) {
+    type = 16 /* ARRAY_CHILDREN */;
+  } else if (isObject(children)) {
+    if (vnode.shapeFlag & 1 /* ELEMENT */) {
+      const slot = children.default;
+      if (isFunction(slot)) {
+        normalizeChildren(vnode, slot());
+      }
+      return;
+    } else {
+      type = 32 /* SLOTS_CHILDREN */;
+    }
+  } else if (isFunction(children)) {
+    children = { default: children };
+    type = 32 /* SLOTS_CHILDREN */;
+  } else {
+    children = String(children);
+    type = 8 /* TEXT_CHILDREN */;
+  }
+  vnode.children = children;
+  vnode.shapeFlag |= type;
+}
+
+// packages/runtime-core/src/componentSlots.ts
+var normalizeSlotValue = (value) => (
+  // children必须是一个数组 跟h函数是一个道理
+  isArray(value) ? value.map(normalizeVNode) : [normalizeVNode(value)]
+);
+var normalizeObjectSlots = (children, slots) => {
+  for (const key in children) {
+    const value = children[key];
+    if (isFunction(value)) {
+      const result = value();
+      slots[key] = normalizeSlotValue(result);
+    } else if (value !== null) {
+      slots[key] = () => normalizeSlotValue(value);
+    }
+  }
+};
+var normalizeVNodeSlots = (instance, children) => {
+  const normalized = normalizeSlotValue(children);
+  instance.slots.default = () => normalized;
+};
+function initSlots(instance, children) {
+  if (instance.vnode.shapeFlag & 32 /* SLOTS_CHILDREN */) {
+    normalizeObjectSlots(children, instance.slots);
+  } else {
+    instance.slots = {};
+    if (children) {
+      normalizeVNodeSlots(instance, children);
+    }
+  }
+}
+
 // packages/runtime-core/src/component.ts
 var uid = 0;
 function createComponentInstance(vnode, parent) {
@@ -838,6 +948,7 @@ function isStatefulComponent(instance) {
 function setupComponent(instance) {
   const isStateful = isStatefulComponent(instance);
   initProps(instance, instance.vnode.props, isStateful);
+  initSlots(instance, instance.vnode.children);
   const setupResult = isStateful ? setupStatefulComponent(instance) : null;
   return setupResult;
 }
@@ -877,61 +988,6 @@ function getAttrsProxy(instance) {
       return target[key];
     }
   }));
-}
-
-// packages/runtime-core/src/vnode.ts
-var Fragment = Symbol.for("v-fgt");
-var Text = Symbol.for("v-txt");
-var Comment = Symbol.for("v-cmt");
-function isVNode(value) {
-  return value ? value.__v_isVNode === true : false;
-}
-var normalizeKey = ({ key }) => key != null ? key : null;
-var normalizeRef = ({ ref: ref2 }) => {
-  if (typeof ref2 === "number") {
-    ref2 = String(ref2);
-  }
-  return ref2;
-};
-function createVNode(type, props = null, children = null) {
-  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : isFunction(type) ? 2 /* FUNCTIONAL_COMPONENT */ : 0;
-  return createBaseVNode(type, props, children, shapeFlag);
-}
-function createBaseVNode(type, props = null, children = null, shapeFlag = type === Fragment ? 0 : 1 /* ELEMENT */) {
-  const vnode = {
-    __v_isVNode: true,
-    type,
-    props,
-    key: props && normalizeKey(props),
-    ref: props && normalizeRef(props),
-    children,
-    el: null,
-    // 真实节点 初始化为null
-    anchor: null,
-    component: null,
-    shapeFlag
-  };
-  if (children) {
-    vnode.shapeFlag |= isString(children) ? 8 /* TEXT_CHILDREN */ : 16 /* ARRAY_CHILDREN */;
-  }
-  return vnode;
-}
-function isSameVNodeType(n1, n2) {
-  return n1.type === n2.type && n1.key === n2.key;
-}
-function normalizeVNode(child) {
-  if (child === null || typeof child === "boolean") {
-    return createVNode(Comment);
-  } else if (isArray(child)) {
-    return createVNode(Fragment, null, child.slice());
-  } else if (typeof child === "object") {
-    return cloneVNode(child);
-  } else {
-    return createVNode(Text, null, String(child));
-  }
-}
-function cloneVNode(vnode) {
-  return vnode;
 }
 
 // packages/runtime-core/src/componentRenderUtils.ts
@@ -1484,6 +1540,7 @@ export {
   isSameVNodeType,
   isVNode,
   nextTick,
+  normalizeChildren,
   normalizeVNode,
   onScopeDispose,
   proxyRefs,
