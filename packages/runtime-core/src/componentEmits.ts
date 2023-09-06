@@ -4,9 +4,12 @@ import { callWithErrorHandling } from './errorHandling';
 
 export function emit(instance: ComponentInternalInstance, event: string, ...args: any[]) {
 	const props = instance.vnode.props || EMPTY_OBJ;
-	let handler = props[`on${capitalize(event)}`];
+
+	let handlerName = `on${capitalize(event)}`;
+	let handler = props[handlerName];
+	console.log(handlerName);
 	if (handler) {
 		callWithErrorHandling(handler, args);
 	}
-	// TODO: v-model 的 emit
+	// TODO: Once
 }

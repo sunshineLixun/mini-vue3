@@ -8,8 +8,8 @@
 	<body>
 		<div id="app"></div>
 		<script type="module">
-			// import { h, render, reactive } from '../../../node_modules/vue/dist/vue.esm-browser.js';
-			import { h, render, reactive, toRefs, Fragment } from './runtime-core.esm-bundler.js';
+			// import { h, render, ref, reactive, toRefs, Fragment } from '../../../node_modules/vue/dist/vue.esm-browser.js';
+			import { h, render, ref, reactive, toRefs, Fragment } from './runtime-core.esm-bundler.js';
 
 			// demo 1. data
 			// const ParentComponent = {
@@ -148,35 +148,67 @@
 			// render(h(Com), app);
 
 			// demo 4.4 child setup emit
+			// const Child = {
+			// 	props: {
+			// 		age: Number
+			// 	},
+			// 	setup(proxy, { emit }) {
+			// 		const handlerAge = () => {
+			// 			emit('ageEvent', '2');
+			// 		};
+
+			// 		return () => h('button', { onClick: handlerAge, style: { color: 'red' } }, `${proxy.age}`);
+			// 	}
+			// };
+
+			// const Com = {
+			// 	setup(proxy) {
+			// 		const state = reactive({
+			// 			age: 1
+			// 		});
+
+			// 		const onClick = () => {
+			// 			state.age++;
+			// 		};
+
+			// 		const onAgeEvent = age => {
+			// 			console.log('子组件回传的age', age);
+			// 		};
+
+			// 		return () =>
+			// 			h(Fragment, [h('button', { onClick }, '点我改变子组件的age'), h(Child, { age: state.age, onAgeEvent })]);
+			// 	}
+			// };
+			// render(h(Com), app);
+
+			// demo 4.4 child setup v-model
 			const Child = {
 				props: {
-					age: Number
+					modelValue: Number
 				},
 				setup(proxy, { emit }) {
-					const handlerAge = () => {
-						emit('ageEvent', '2');
+					const handlerAge = event => {
+						emit('update:modelValue', event.target.value);
 					};
 
-					return () => h('button', { onClick: handlerAge, style: { color: 'red' } }, `${proxy.age}`);
+					return () => h('input', { value: `${proxy.modelValue}`, onInput: handlerAge });
 				}
 			};
 
 			const Com = {
 				setup(proxy) {
-					const state = reactive({
-						age: 1
-					});
-
-					const onClick = () => {
-						state.age++;
-					};
-
-					const onAgeEvent = age => {
-						console.log('子组件回传的age', age);
-					};
+					const age = ref(1);
 
 					return () =>
-						h(Fragment, [h('button', { onClick }, '点我改变子组件的age'), h(Child, { age: state.age, onAgeEvent })]);
+						h(Fragment, [
+							h('div', `${age.value}`),
+							h(Child, {
+								modelValue: age.value,
+								'onUpdate:modelValue': value => {
+									age.value = value;
+								}
+							})
+						]);
 				}
 			};
 			render(h(Com), app);

@@ -768,7 +768,9 @@ function updateProps(instance, rawProps, rawPrevProps) {
 // packages/runtime-core/src/componentEmits.ts
 function emit(instance, event, ...args) {
   const props = instance.vnode.props || EMPTY_OBJ;
-  let handler = props[`on${capitalize(event)}`];
+  let handlerName = `on${capitalize(event)}`;
+  let handler = props[handlerName];
+  console.log(handlerName);
   if (handler) {
     callWithErrorHandling(handler, args);
   }
