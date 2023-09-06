@@ -770,9 +770,18 @@ function emit(instance, event, ...args) {
   const props = instance.vnode.props || EMPTY_OBJ;
   let handlerName = `on${capitalize(event)}`;
   let handler = props[handlerName];
-  console.log(handlerName);
   if (handler) {
     callWithErrorHandling(handler, args);
+  }
+  const onceHandler = props[handlerName + "Once"];
+  if (onceHandler) {
+    if (!instance.emitted) {
+      instance.emitted = {};
+    } else if (instance.emitted[handlerName]) {
+      return;
+    }
+    instance.emitted[handlerName] = true;
+    callWithErrorHandling(onceHandler, args);
   }
 }
 
@@ -797,6 +806,7 @@ function createComponentInstance(vnode, parent) {
     // 传给组件的props
     propsOptions: type.props || EMPTY_OBJ,
     emit: null,
+    emitted: null,
     proxy: null,
     update: null,
     render: null,

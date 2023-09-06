@@ -44,6 +44,8 @@ export function createComponentInstance(
 
 		emit: null,
 
+		emitted: null,
+
 		proxy: null,
 		update: null,
 

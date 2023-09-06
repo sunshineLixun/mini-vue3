@@ -66,6 +66,9 @@ export interface ComponentInternalInstance {
 	accessCache: Data | null;
 	emit: () => void;
 
+	// 记录 .once event 事件，当标记为.once时，只会触发一次
+	emitted: Record<string, boolean> | null;
+
 	setupContext: any;
 
 	// 其实就是当前组件 this

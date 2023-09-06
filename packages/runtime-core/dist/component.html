@@ -182,33 +182,62 @@
 			// render(h(Com), app);
 
 			// demo 4.4 child setup v-model
+			// const Child = {
+			// 	props: {
+			// 		modelValue: Number
+			// 	},
+			// 	setup(proxy, { emit }) {
+			// 		const handlerAge = event => {
+			// 			emit('update:modelValue', event.target.value);
+			// 		};
+			// 		return () => h('input', { value: `${proxy.modelValue}`, onInput: handlerAge });
+			// 	}
+			// };
+
+			// const Com = {
+			// 	setup(proxy) {
+			// 		const age = ref(1);
+
+			// 		return () =>
+			// 			h(Fragment, [
+			// 				h('div', `${age.value}`),
+			// 				h(Child, {
+			// 					modelValue: age.value,
+			// 					'onUpdate:modelValue': value => {
+			// 						age.value = value;
+			// 					}
+			// 				})
+			// 			]);
+			// 	}
+			// };
+			// render(h(Com), app);
+
+			// demo 4.5 child setup emit.once
 			const Child = {
 				props: {
-					modelValue: Number
+					value: String
 				},
 				setup(proxy, { emit }) {
 					const handlerAge = event => {
-						emit('update:modelValue', event.target.value);
+						emit('ageEvent', event.target.value);
 					};
 
-					return () => h('input', { value: `${proxy.modelValue}`, onInput: handlerAge });
+					return () => h('input', { value: `${proxy.value}`, onInput: handlerAge, style: { color: 'red' } });
 				}
 			};
 
 			const Com = {
 				setup(proxy) {
-					const age = ref(1);
+					const state = reactive({
+						value: '1'
+					});
+
+					const onAgeEvent = value => {
+						state.value = value;
+					};
 
 					return () =>
-						h(Fragment, [
-							h('div', `${age.value}`),
-							h(Child, {
-								modelValue: age.value,
-								'onUpdate:modelValue': value => {
-									age.value = value;
-								}
-							})
-						]);
+						h(Fragment, [h('div', state.value), h(Child, { value: state.value, onAgeEventOnce: onAgeEvent })]);
 				}
 			};
 			render(h(Com), app);
