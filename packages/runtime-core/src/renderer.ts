@@ -15,6 +15,7 @@ import { ComponentInternalInstance, renderComponentRoot, shouldUpdateComponent }
 import { ReactiveEffect } from '@vue/reactivity';
 import { SchedulerJob, queueJob } from './scheduler';
 import { updateProps } from './componentProps';
+import { updateSlots } from './componentSlots';
 
 export interface Renderer<HostElement = RendererElement> {
 	render: RootRenderFunction<HostElement>;
@@ -580,6 +581,7 @@ function baseCreateRenderer(options: RendererOptions) {
 		// 清空next，防止后续一直以为有next节点，导致走更新方法
 		instance.next = null;
 		updateProps(instance, nextVNode.props, prevProps);
+		updateSlots(instance, nextVNode.children);
 	};
 
 	// 重点: 组件关联effect

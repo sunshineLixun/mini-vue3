@@ -24,6 +24,8 @@ export function initProps(instance: ComponentInternalInstance, rawProps: Data | 
 	instance.attrs = attrs;
 }
 
+// 这个方法处理 props 和 attrs
+// 如果用户主动声明了props对象，并且在vnode上的props里，那就处理成instance的props，不在的话就被归类到attrs中
 function setFullProps(instance: ComponentInternalInstance, rawProps: Data | null, props: Data, attrs: Data) {
 	// propsOptions用户自己在组件先写的props
 	const options = instance.propsOptions;

@@ -128,22 +128,34 @@ export function renderComponentRoot(instance: ComponentInternalInstance): VNode 
 }
 
 export function shouldUpdateComponent(prevVNode: VNode, nextVNode: VNode): boolean {
+	const { props: prevProps, children: prevChild } = prevVNode;
+	const { props: nextProps, children: nextChild } = nextVNode;
+
+	// children
+	if (prevChild || nextChild) {
+		// $stable 用于手动标记改 children 是否能被更新
+		// 当为true时，会跳过更新
+		if (!nextChild || !(nextChild as any).$stable) {
+			return true;
+		}
+	}
+
 	// TODO: emit
-	if (prevVNode === nextVNode) {
+	if (prevProps === nextProps) {
 		return false;
 	}
 
 	// 如果没有老属性，直接判断新属性
-	if (!prevVNode) {
-		return !!nextVNode;
+	if (!prevProps) {
+		return !!nextProps;
 	}
 
 	// 没有新属性，就更新
-	if (!nextVNode) {
+	if (!nextProps) {
 		return true;
 	}
 
-	return hasPropsChanged(prevVNode.props, nextVNode.props);
+	return hasPropsChanged(prevProps, nextProps);
 }
 
 export function hasPropsChanged(prevProps: Data, nextProps: Data): boolean {

@@ -251,19 +251,71 @@
 			// };
 			// render(h(Com, null, '111'), app);
 
-			// demo 4.5.2 child setup slots 对象，但值是一个常量
+			// demo 4.5.2 普通元素children是一个插槽
+			//
+			// render(
+			// 	h('div', null, {
+			// 		default: () => '3335455'
+			// 	}),
+			// 	app
+			// );
 
-			const Com = {
-				setup(proxy, { slots }) {
-					return () => h(Fragment, slots.default());
+			// demo 4.5.3 组件children是一个插槽，返回的是常量
+			// const Com = {
+			// 	setup(_, { slots }) {
+			// 		return () => h(Fragment, slots.default());
+			// 	}
+			// };
+
+			// render(
+			// 	h(Com, null, {
+			// 		default: () => '344433'
+			// 	}),
+			// 	app
+			// );
+
+			// demo 4.5.4 组件children是一个插槽，返回的是vnode
+			// const Com = {
+			// 	setup(_, { slots }) {
+			// 		return () => h(Fragment, slots.default());
+			// 	}
+			// };
+
+			// render(
+			// 	h(Com, null, {
+			// 		default: () => h('div', '我是一个插槽')
+			// 	}),
+			// 	app
+			// );
+
+			// demo 4.5.5
+
+			const Child = {
+				render() {
+					return h('div', this.$slots.default());
 				}
 			};
-			render(
-				h('div', null, {
-					default: () => '333'
-				}),
-				app
-			);
+			const Com = {
+				setup() {
+					const state = reactive({
+						flag: true
+					});
+
+					const onChange = () => {
+						state.flag = !state.flag;
+					};
+
+					return () =>
+						h(Fragment, {}, [
+							h('button', { onClick: onChange }, '点我改变slots'),
+							h(Child, null, {
+								default: state.flag ? 111 : () => 222
+							})
+						]);
+				}
+			};
+
+			render(h(Com), app);
 		</script>
 	</body>
 </html>

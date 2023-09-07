@@ -874,7 +874,7 @@ var normalizeObjectSlots = (children, slots) => {
     const value = children[key];
     if (isFunction(value)) {
       const result = value();
-      slots[key] = normalizeSlotValue(result);
+      slots[key] = () => normalizeSlotValue(result);
     } else if (value !== null) {
       slots[key] = () => normalizeSlotValue(value);
     }
@@ -892,6 +892,13 @@ function initSlots(instance, children) {
     if (children) {
       normalizeVNodeSlots(instance, children);
     }
+  }
+}
+function updateSlots(instance, children) {
+  if (instance.vnode.shapeFlag & 32 /* SLOTS_CHILDREN */) {
+    normalizeObjectSlots(children, instance.slots);
+  } else if (children) {
+    normalizeVNodeSlots(instance, children);
   }
 }
 
@@ -1009,16 +1016,23 @@ function renderComponentRoot(instance) {
   return result;
 }
 function shouldUpdateComponent(prevVNode, nextVNode) {
-  if (prevVNode === nextVNode) {
+  const { props: prevProps, children: prevChild } = prevVNode;
+  const { props: nextProps, children: nextChild } = nextVNode;
+  if (prevChild || nextChild) {
+    if (!nextChild || !nextChild.$stable) {
+      return true;
+    }
+  }
+  if (prevProps === nextProps) {
     return false;
   }
-  if (!prevVNode) {
-    return !!nextVNode;
+  if (!prevProps) {
+    return !!nextProps;
   }
-  if (!nextVNode) {
+  if (!nextProps) {
     return true;
   }
-  return hasPropsChanged(prevVNode.props, nextVNode.props);
+  return hasPropsChanged(prevProps, nextProps);
 }
 function hasPropsChanged(prevProps, nextProps) {
   const newKeys = Object.keys(nextProps);
@@ -1262,6 +1276,7 @@ function baseCreateRenderer(options) {
     instance.vnode = nextVNode;
     instance.next = null;
     updateProps(instance, nextVNode.props, prevProps);
+    updateSlots(instance, nextVNode.children);
   };
   const setupRenderEffect = (instance, initialVNode, container, anchor) => {
     const componentUpdateFn = () => {
