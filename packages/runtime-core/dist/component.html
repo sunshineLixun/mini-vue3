@@ -8,8 +8,16 @@
 	<body>
 		<div id="app"></div>
 		<script type="module">
-			// import { h, render, ref, reactive, toRefs, Fragment } from '../../../node_modules/vue/dist/vue.esm-browser.js';
-			import { h, render, ref, reactive, toRefs, Fragment } from './runtime-core.esm-bundler.js';
+			// import {
+			// 	h,
+			// 	render,
+			// 	ref,
+			// 	reactive,
+			// 	toRefs,
+			// 	Fragment,
+			// 	Comment
+			// } from '../../../node_modules/vue/dist/vue.esm-browser.js';
+			import { h, render, ref, reactive, toRefs, Fragment, Comment } from './runtime-core.esm-bundler.js';
 
 			// demo 1. data
 			// const ParentComponent = {
@@ -288,29 +296,62 @@
 			// 	app
 			// );
 
-			// demo 4.5.5
+			// demo 4.5.5 updateSlots
+			// const Child = {
+			// 	render() {
+			// 		return h('div', this.$slots.default());
+			// 	}
+			// };
+			// const Com = {
+			// 	setup() {
+			// 		const state = reactive({
+			// 			flag: true
+			// 		});
 
+			// 		const onChange = () => {
+			// 			state.flag = !state.flag;
+			// 		};
+
+			// 		return () =>
+			// 			h(Fragment, {}, [
+			// 				h('button', { onClick: onChange }, '点我改变slots'),
+			// 				h(Child, null, {
+			// 					default: state.flag ? 111 : () => 222
+			// 				})
+			// 			]);
+			// 	}
+			// };
+			// render(h(Com), app);
+
+			// 5. expose
 			const Child = {
-				render() {
-					return h('div', this.$slots.default());
-				}
-			};
-			const Com = {
-				setup() {
-					const state = reactive({
-						flag: true
+				setup(proxy, { expose }) {
+					const getContent = () => {
+						return '子组件内容';
+					};
+
+					expose({
+						getContent
 					});
 
-					const onChange = () => {
-						state.flag = !state.flag;
+					return () => h(Comment);
+				}
+			};
+
+			const Com = {
+				setup() {
+					const content = ref('');
+					const childRef = ref();
+
+					const onGetChild = () => {
+						content.value = childRef.value.getContent();
 					};
 
 					return () =>
-						h(Fragment, {}, [
-							h('button', { onClick: onChange }, '点我改变slots'),
-							h(Child, null, {
-								default: state.flag ? 111 : () => 222
-							})
+						h(Fragment, [
+							h('button', { onClick: onGetChild }, '点我获取子组件内容'),
+							h('div', content.value),
+							h(Child, { ref: childRef })
 						]);
 				}
 			};

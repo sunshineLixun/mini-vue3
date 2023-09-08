@@ -2,6 +2,7 @@ import { EMPTY_OBJ, NOOP, extend, hasOwn } from '@vue/shared';
 import { track } from '@vue/reactivity';
 import { ComponentInternalInstance } from './componentRenderUtils';
 import { nextTick, queueJob } from './scheduler';
+import { getExposeProxy, isStatefulComponent } from './component';
 
 const enum AccessTypes {
 	OTHER,
@@ -9,6 +10,16 @@ const enum AccessTypes {
 	DATA,
 	PROPS,
 	CONTEXT
+}
+
+export function getPublicInstance(i: ComponentInternalInstance | null) {
+	if (i === null) {
+		return null;
+	}
+	if (isStatefulComponent(i)) {
+		return getExposeProxy(i) || i.proxy;
+	}
+	return getPublicInstance(i.parent);
 }
 
 export type PublicPropertiesMap = Record<string, (i: ComponentInternalInstance) => any>;
@@ -24,9 +35,11 @@ export const publicPropertiesMap = extend(Object.create(null), {
 	$refs: i => i.refs,
 	$emit: i => i.emit,
 
+	$root: i => getPublicInstance(i.root),
 	$options: i => i.type,
 	$forceUpdate: i => queueJob(i.update),
 	$nextTick: i => nextTick.bind(i.proxy),
+	// vue3不支持这个写法了
 	$watch: () => NOOP
 } as PublicPropertiesMap);
 

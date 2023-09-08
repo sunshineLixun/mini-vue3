@@ -4,7 +4,7 @@ import { EMPTY_OBJ, NOOP, ShapeFlags, isFunction, isObject } from '@vue/shared';
 import { ComponentInternalInstance, InternalRenderFunction } from './componentRenderUtils';
 import { VNode } from './vnode';
 import { callWithErrorHandling } from './errorHandling';
-import { PublicInstanceProxyHandlers } from './componentPublicInstance';
+import { PublicInstanceProxyHandlers, publicPropertiesMap } from './componentPublicInstance';
 import { proxyRefs, shallowReactive, track } from '@vue/reactivity';
 import { initProps } from './componentProps';
 import { emit } from './componentEmits';
@@ -63,6 +63,7 @@ export function createComponentInstance(
 		exposed: null,
 
 		attrsProxy: null,
+		exposeProxy: null,
 
 		setupContext: null
 	};
@@ -81,7 +82,9 @@ function createSetupContext(instance: ComponentInternalInstance) {
 			// proxy attrs
 			return getAttrsProxy(instance);
 		},
-		expose: (exposed: Record<string, any>) => (instance.exposed = exposed || {})
+		expose: (exposed: Record<string, any>) => {
+			instance.exposed = exposed || {};
+		}
 	};
 }
 
@@ -181,4 +184,24 @@ function getAttrsProxy(instance: ComponentInternalInstance) {
 			}
 		}))
 	);
+}
+
+// 通过对instance.exposed代理，这里外部就可以通过对 ref 进行访问组件实例
+export function getExposeProxy(instance: ComponentInternalInstance) {
+	if (instance.exposed) {
+		return (
+			// expose取值，其实就是对exposeProxy
+			instance.exposeProxy ||
+			(instance.exposeProxy = new Proxy(instance.exposed, {
+				get(target, key: string) {
+					if (key in target) {
+						return target[key];
+					} else if (key in publicPropertiesMap) {
+						// 拿到组件的ref 还可以对组件的全局属性进行取值，比如 componentRef.value.$attrs  就会执行到这里
+						return publicPropertiesMap[key](instance);
+					}
+				}
+			}))
+		);
+	}
 }

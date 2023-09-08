@@ -16,6 +16,7 @@ import { ReactiveEffect } from '@vue/reactivity';
 import { SchedulerJob, queueJob } from './scheduler';
 import { updateProps } from './componentProps';
 import { updateSlots } from './componentSlots';
+import { setRef } from './rendererTemplateRef';
 
 export interface Renderer<HostElement = RendererElement> {
 	render: RootRenderFunction<HostElement>;
@@ -109,7 +110,13 @@ type ProcessTextFn = (n1: VNode | null, n2: VNode, container: RendererElement, a
 
 type ProcessCommentFn = (n1: VNode | null, n2: VNode, container: RendererElement, anchor: RendererNode | null) => void;
 
-type ProcessElementFn = (n1: VNode | null, n2: VNode, container: RendererElement, anchor: RendererNode | null) => void;
+type ProcessElementFn = (
+	n1: VNode | null,
+	n2: VNode,
+	container: RendererElement,
+	anchor: RendererNode | null,
+	parentComponent?: ComponentInternalInstance | null
+) => void;
 
 type ProcessComponentFn = (
 	n1: VNode | null,
@@ -119,9 +126,14 @@ type ProcessComponentFn = (
 	parentComponent?: ComponentInternalInstance | null
 ) => void;
 
-type MountElementFn = (vnode: VNode, container: RendererElement, anchor: RendererNode | null) => void;
+type MountElementFn = (
+	vnode: VNode,
+	container: RendererElement,
+	anchor: RendererNode | null,
+	parentComponent: ComponentInternalInstance | null
+) => void;
 
-type PatchElementFn = (n1: VNode | null, n2: VNode) => void;
+type PatchElementFn = (n1: VNode | null, n2: VNode, parentComponent: ComponentInternalInstance | null) => void;
 
 type UnmountFn = (vnode: VNode) => void;
 
@@ -129,7 +141,13 @@ type RemoveFn = (vnode: VNode) => void;
 
 type PatchPropsFn = (el: RendererElement, oldProps: Data, newProps: Data) => void;
 
-type PatchChildrenFn = (n1: VNode | null, n2: VNode, container: RendererElement, anchor: RendererNode | null) => void;
+type PatchChildrenFn = (
+	n1: VNode | null,
+	n2: VNode,
+	container: RendererElement,
+	anchor: RendererNode | null,
+	parentComponent: ComponentInternalInstance | null
+) => void;
 
 type UnmountChildrenFn = (children: VNode[]) => void;
 
@@ -137,6 +155,7 @@ type MountChildrenFn = (
 	children: VNodeArrayChildren,
 	container: RendererElement,
 	anchor: RendererNode | null,
+	parentComponent: ComponentInternalInstance | null,
 	start?: number
 ) => void;
 
@@ -168,12 +187,12 @@ function baseCreateRenderer(options: RendererOptions) {
 	// 挂载子元素
 	// 递归处理children
 	// eg. h('div', props, [h('span', props)])
-	const mountChildren: MountChildrenFn = (children, el, anchor, start = 0) => {
+	const mountChildren: MountChildrenFn = (children, el, anchor, parentComponent, start = 0) => {
 		for (let i = start; i < children.length; i++) {
 			// 这里的child可能是普通文本(string, number)，也可能是vnode，也可能是 [h('span'), h('div')]
 			const child = normalizeVNode(children[i]);
 			// 递归处理每个子元素
-			patch(null, child, el, anchor);
+			patch(null, child, el, anchor, parentComponent);
 		}
 	};
 
@@ -184,7 +203,12 @@ function baseCreateRenderer(options: RendererOptions) {
 		}
 	};
 
-	function patchKeyedChildren(c1: VNode[], c2: VNodeArrayChildren, container: RendererElement) {
+	function patchKeyedChildren(
+		c1: VNode[],
+		c2: VNodeArrayChildren,
+		container: RendererElement,
+		parentComponent: ComponentInternalInstance | null
+	) {
 		let i = 0;
 		// 最大长度
 		const l1 = c1.length;
@@ -208,7 +232,7 @@ function baseCreateRenderer(options: RendererOptions) {
 
 			if (isSameVNodeType(n1, n2)) {
 				// 表示是同一个节点，递归处理, 比较内部
-				patch(n1, n2, container, null);
+				patch(n1, n2, container, null, parentComponent);
 			} else {
 				// 当遇到不同的节点时，结束循环
 				break;
@@ -228,7 +252,7 @@ function baseCreateRenderer(options: RendererOptions) {
 			// n2 copy一下，避免直接修改用户传入的新值
 			const n2 = normalizeVNode(c2[e2]);
 			if (isSameVNodeType(n1, n2)) {
-				patch(n1, n2, container, null);
+				patch(n1, n2, container, null, parentComponent);
 			} else {
 				break;
 			}
@@ -261,7 +285,7 @@ function baseCreateRenderer(options: RendererOptions) {
 				const nextPos = e2 + 1;
 				const anchor = nextPos < l2 ? (c2[nextPos] as VNode).el : null;
 				while (i <= e2) {
-					patch(null, normalizeVNode(c2[i]), container, anchor);
+					patch(null, normalizeVNode(c2[i]), container, anchor, parentComponent);
 					i++;
 				}
 			}
@@ -326,7 +350,7 @@ function baseCreateRenderer(options: RendererOptions) {
 					unmount(prevChild);
 				} else {
 					// 存在就复用该vnode, 进行patch
-					patch(prevChild, c2[newIndex] as VNode, container);
+					patch(prevChild, c2[newIndex] as VNode, container, parentComponent);
 				}
 			}
 
@@ -373,7 +397,7 @@ function baseCreateRenderer(options: RendererOptions) {
 	 * 8:   空           文本         清空文本
 	 * 9:   空            空          忽略 不处理
 	 */
-	const patchChildren: PatchChildrenFn = (n1, n2, container, anchor) => {
+	const patchChildren: PatchChildrenFn = (n1, n2, container, anchor, parentComponent) => {
 		// 老的子元素
 		const c1 = n1.children;
 		const prevShapFlags = n1 ? n1.shapeFlag : 0;
@@ -403,7 +427,7 @@ function baseCreateRenderer(options: RendererOptions) {
 					// 重点： 全量 diff
 					// 这里是情况最复杂的，也是最喜欢问考点的：
 					// 1：为啥循环要指定key
-					patchKeyedChildren(c1 as VNode[], c2 as VNodeArrayChildren, container);
+					patchKeyedChildren(c1 as VNode[], c2 as VNodeArrayChildren, container, parentComponent);
 				} else {
 					// 这个分支对应第7种情况，因为第1种情况走了上面的if分支
 					// 新值是空的，直接卸载老值
@@ -421,14 +445,14 @@ function baseCreateRenderer(options: RendererOptions) {
 
 				if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
 					// 挂载新的元素
-					mountChildren(c2 as VNodeArrayChildren, container, anchor);
+					mountChildren(c2 as VNodeArrayChildren, container, anchor, parentComponent);
 				}
 			}
 		}
 	};
 
 	// 初次渲染
-	const mountElement: MountElementFn = (vnode, container, anchor) => {
+	const mountElement: MountElementFn = (vnode, container, anchor, parentComponent) => {
 		// 真实节点
 		let el: RendererElement;
 
@@ -442,7 +466,7 @@ function baseCreateRenderer(options: RendererOptions) {
 		} else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
 			// eg. h('div', props, [h('span', props)])
 			// h('div', props, ['xxx', 'ccccc'])
-			mountChildren(children as VNodeArrayChildren[], el, null);
+			mountChildren(children as VNodeArrayChildren[], el, parentComponent, null);
 		}
 
 		// 处理props
@@ -493,14 +517,14 @@ function baseCreateRenderer(options: RendererOptions) {
 	};
 
 	// diff
-	const patchElement: PatchElementFn = (n1, n2) => {
+	const patchElement: PatchElementFn = (n1, n2, parentComponent) => {
 		// 将老的el替换成新的el
 		const el = (n2.el = n1.el);
 		const oldProps = n1.props || EMPTY_OBJ;
 		const newProps = n2.props || EMPTY_OBJ;
 
 		// 1: children
-		patchChildren(n1, n2, el, null);
+		patchChildren(n1, n2, el, null, parentComponent);
 
 		// 2: props
 		// TODO: 这里可以根据 编译阶段 设置 patchFlag 来判断是更新class style props、动态props
@@ -508,13 +532,13 @@ function baseCreateRenderer(options: RendererOptions) {
 		patchProps(el, oldProps, newProps);
 	};
 
-	const processElement: ProcessElementFn = (n1, n2, container, anchor) => {
+	const processElement: ProcessElementFn = (n1, n2, container, anchor, parentComponent) => {
 		if (n1 == null) {
 			// 初次渲染
-			mountElement(n2, container, anchor);
+			mountElement(n2, container, anchor, parentComponent);
 		} else {
 			// diff
-			patchElement(n1, n2);
+			patchElement(n1, n2, parentComponent);
 		}
 	};
 
@@ -540,7 +564,13 @@ function baseCreateRenderer(options: RendererOptions) {
 		}
 	};
 
-	const processFragment = (n1: VNode | null, n2: VNode, container: RendererElement, anchor: RendererNode | null) => {
+	const processFragment = (
+		n1: VNode | null,
+		n2: VNode,
+		container: RendererElement,
+		anchor: RendererNode | null,
+		parentComponent: ComponentInternalInstance | null
+	) => {
 		// 如果是第一次渲染，n2.el 默认是创建一个text文本
 		// patch更新时：n2.el = n1
 		const fragmentStartAnchor = (n2.el = n1 ? n1.el : hostCreateText(''))!;
@@ -551,10 +581,10 @@ function baseCreateRenderer(options: RendererOptions) {
 			hostInsert(fragmentEndAnchor, container, anchor);
 
 			// fragmnet 子元素必须是children
-			mountChildren(n2.children as VNodeArrayChildren, container, fragmentEndAnchor);
+			mountChildren(n2.children as VNodeArrayChildren, container, fragmentEndAnchor, parentComponent);
 		} else {
 			// patch
-			patchChildren(n1, n2, container, fragmentEndAnchor);
+			patchChildren(n1, n2, container, fragmentEndAnchor, parentComponent);
 		}
 	};
 
@@ -686,7 +716,7 @@ function baseCreateRenderer(options: RendererOptions) {
 			// 删除n1, 代表为初次渲染
 			n1 = null;
 		}
-		const { type, shapeFlag } = n2;
+		const { type, ref, shapeFlag } = n2;
 
 		switch (type) {
 			case Text:
@@ -696,18 +726,22 @@ function baseCreateRenderer(options: RendererOptions) {
 				processComment(n1, n2, container, anchor);
 				break;
 			case Fragment:
-				processFragment(n1, n2, container, anchor);
+				processFragment(n1, n2, container, anchor, parentComponent);
 				break;
 			default:
 				// 这里先处理普通元素 div  span ul
 				if (shapeFlag & ShapeFlags.ELEMENT) {
 					// 普通元素
-					processElement(n1, n2, container, anchor);
+					processElement(n1, n2, container, anchor, parentComponent);
 				} else if (shapeFlag & ShapeFlags.COMPONENT) {
 					// 组件
 					processComponent(n1, n2, container, anchor, parentComponent);
 				}
 				break;
+		}
+
+		if (ref !== null && parentComponent) {
+			setRef(ref, n1 && n1.ref, n2 || n1);
 		}
 	};
 

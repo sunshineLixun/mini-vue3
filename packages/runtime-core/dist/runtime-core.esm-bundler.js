@@ -670,6 +670,15 @@ function queueJob(job) {
 }
 
 // packages/runtime-core/src/componentPublicInstance.ts
+function getPublicInstance(i) {
+  if (i === null) {
+    return null;
+  }
+  if (isStatefulComponent(i)) {
+    return getExposeProxy(i) || i.proxy;
+  }
+  return getPublicInstance(i.parent);
+}
 var publicPropertiesMap = extend(/* @__PURE__ */ Object.create(null), {
   // 列举几个常用的的 属性
   $: (i) => i,
@@ -680,9 +689,11 @@ var publicPropertiesMap = extend(/* @__PURE__ */ Object.create(null), {
   $slots: (i) => i.slots,
   $refs: (i) => i.refs,
   $emit: (i) => i.emit,
+  $root: (i) => getPublicInstance(i.root),
   $options: (i) => i.type,
   $forceUpdate: (i) => queueJob(i.update),
   $nextTick: (i) => nextTick.bind(i.proxy),
+  // vue3不支持这个写法了
   $watch: () => NOOP
 });
 var PublicInstanceProxyHandlers = {
@@ -933,6 +944,7 @@ function createComponentInstance(vnode, parent) {
     isMounted: false,
     exposed: null,
     attrsProxy: null,
+    exposeProxy: null,
     setupContext: null
   };
   instance.root = parent ? parent.root : instance;
@@ -946,7 +958,9 @@ function createSetupContext(instance) {
     get attrs() {
       return getAttrsProxy(instance);
     },
-    expose: (exposed) => instance.exposed = exposed || {}
+    expose: (exposed) => {
+      instance.exposed = exposed || {};
+    }
   };
 }
 function isStatefulComponent(instance) {
@@ -995,6 +1009,22 @@ function getAttrsProxy(instance) {
       return target[key];
     }
   }));
+}
+function getExposeProxy(instance) {
+  if (instance.exposed) {
+    return (
+      // expose取值，其实就是对exposeProxy
+      instance.exposeProxy || (instance.exposeProxy = new Proxy(instance.exposed, {
+        get(target, key) {
+          if (key in target) {
+            return target[key];
+          } else if (key in publicPropertiesMap) {
+            return publicPropertiesMap[key](instance);
+          }
+        }
+      }))
+    );
+  }
 }
 
 // packages/runtime-core/src/componentRenderUtils.ts
@@ -1049,6 +1079,24 @@ function hasPropsChanged(prevProps, nextProps) {
   return false;
 }
 
+// packages/runtime-core/src/rendererTemplateRef.ts
+function setRef(rawRef, oldRawRef, vnode) {
+  if (isArray(rawRef)) {
+    rawRef.forEach((r, i) => setRef(r, oldRawRef && (isArray(oldRawRef) ? oldRawRef[i] : oldRawRef), vnode));
+    return;
+  }
+  const value = vnode.shapeFlag & 4 /* STATEFUL_COMPONENT */ ? getExposeProxy(vnode.component) || vnode.component.proxy : vnode.el;
+  const _isRef = isRef(rawRef);
+  const doSet = () => {
+    if (_isRef) {
+      rawRef.value = value;
+    }
+  };
+  if (value) {
+    queueJob(doSet);
+  }
+}
+
 // packages/runtime-core/src/renderer.ts
 function createRenderer(options) {
   return baseCreateRenderer(options);
@@ -1066,10 +1114,10 @@ function baseCreateRenderer(options) {
     parentNode: hostParentNode,
     nextSibling: hostNextSibling
   } = options;
-  const mountChildren = (children, el, anchor, start = 0) => {
+  const mountChildren = (children, el, anchor, parentComponent, start = 0) => {
     for (let i = start; i < children.length; i++) {
       const child = normalizeVNode(children[i]);
-      patch(null, child, el, anchor);
+      patch(null, child, el, anchor, parentComponent);
     }
   };
   const unmountChildren = (childrens) => {
@@ -1077,7 +1125,7 @@ function baseCreateRenderer(options) {
       unmount(childrens[i]);
     }
   };
-  function patchKeyedChildren(c1, c2, container) {
+  function patchKeyedChildren(c1, c2, container, parentComponent) {
     let i = 0;
     const l1 = c1.length;
     const l2 = c2.length;
@@ -1087,7 +1135,7 @@ function baseCreateRenderer(options) {
       const n1 = c1[i];
       const n2 = normalizeVNode(c2[i]);
       if (isSameVNodeType(n1, n2)) {
-        patch(n1, n2, container, null);
+        patch(n1, n2, container, null, parentComponent);
       } else {
         break;
       }
@@ -1097,7 +1145,7 @@ function baseCreateRenderer(options) {
       const n1 = c1[e1];
       const n2 = normalizeVNode(c2[e2]);
       if (isSameVNodeType(n1, n2)) {
-        patch(n1, n2, container, null);
+        patch(n1, n2, container, null, parentComponent);
       } else {
         break;
       }
@@ -1109,7 +1157,7 @@ function baseCreateRenderer(options) {
         const nextPos = e2 + 1;
         const anchor = nextPos < l2 ? c2[nextPos].el : null;
         while (i <= e2) {
-          patch(null, normalizeVNode(c2[i]), container, anchor);
+          patch(null, normalizeVNode(c2[i]), container, anchor, parentComponent);
           i++;
         }
       }
@@ -1136,7 +1184,7 @@ function baseCreateRenderer(options) {
         if (newIndex === void 0) {
           unmount(prevChild);
         } else {
-          patch(prevChild, c2[newIndex], container);
+          patch(prevChild, c2[newIndex], container, parentComponent);
         }
       }
       let patched = 0;
@@ -1151,7 +1199,7 @@ function baseCreateRenderer(options) {
       }
     }
   }
-  const patchChildren = (n1, n2, container, anchor) => {
+  const patchChildren = (n1, n2, container, anchor, parentComponent) => {
     const c1 = n1.children;
     const prevShapFlags = n1 ? n1.shapeFlag : 0;
     const c2 = n2.children;
@@ -1166,7 +1214,7 @@ function baseCreateRenderer(options) {
     } else {
       if (prevShapFlags & 16 /* ARRAY_CHILDREN */) {
         if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
-          patchKeyedChildren(c1, c2, container);
+          patchKeyedChildren(c1, c2, container, parentComponent);
         } else {
           unmountChildren(c1);
         }
@@ -1175,19 +1223,19 @@ function baseCreateRenderer(options) {
           hostSetElementText(container, "");
         }
         if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
-          mountChildren(c2, container, anchor);
+          mountChildren(c2, container, anchor, parentComponent);
         }
       }
     }
   };
-  const mountElement = (vnode, container, anchor) => {
+  const mountElement = (vnode, container, anchor, parentComponent) => {
     let el;
     const { type, shapeFlag, props, children } = vnode;
     el = vnode.el = hostCreateElement(type);
     if (shapeFlag & 8 /* TEXT_CHILDREN */) {
       hostSetElementText(el, children);
     } else if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
-      mountChildren(children, el, null);
+      mountChildren(children, el, parentComponent, null);
     }
     if (props) {
       for (const key in props) {
@@ -1221,18 +1269,18 @@ function baseCreateRenderer(options) {
       }
     }
   };
-  const patchElement = (n1, n2) => {
+  const patchElement = (n1, n2, parentComponent) => {
     const el = n2.el = n1.el;
     const oldProps = n1.props || EMPTY_OBJ;
     const newProps = n2.props || EMPTY_OBJ;
-    patchChildren(n1, n2, el, null);
+    patchChildren(n1, n2, el, null, parentComponent);
     patchProps(el, oldProps, newProps);
   };
-  const processElement = (n1, n2, container, anchor) => {
+  const processElement = (n1, n2, container, anchor, parentComponent) => {
     if (n1 == null) {
-      mountElement(n2, container, anchor);
+      mountElement(n2, container, anchor, parentComponent);
     } else {
-      patchElement(n1, n2);
+      patchElement(n1, n2, parentComponent);
     }
   };
   const processText = (n1, n2, el, anchor) => {
@@ -1252,15 +1300,15 @@ function baseCreateRenderer(options) {
       n2.el = n1.el;
     }
   };
-  const processFragment = (n1, n2, container, anchor) => {
+  const processFragment = (n1, n2, container, anchor, parentComponent) => {
     const fragmentStartAnchor = n2.el = n1 ? n1.el : hostCreateText("");
     const fragmentEndAnchor = n2.anchor = n1 ? n1.anchor : hostCreateText("");
     if (n1 === null) {
       hostInsert(fragmentStartAnchor, container, anchor);
       hostInsert(fragmentEndAnchor, container, anchor);
-      mountChildren(n2.children, container, fragmentEndAnchor);
+      mountChildren(n2.children, container, fragmentEndAnchor, parentComponent);
     } else {
-      patchChildren(n1, n2, container, fragmentEndAnchor);
+      patchChildren(n1, n2, container, fragmentEndAnchor, parentComponent);
     }
   };
   const processComponent = (n1, n2, container, anchor, parentComponent) => {
@@ -1329,7 +1377,7 @@ function baseCreateRenderer(options) {
       unmount(n1);
       n1 = null;
     }
-    const { type, shapeFlag } = n2;
+    const { type, ref: ref2, shapeFlag } = n2;
     switch (type) {
       case Text:
         processText(n1, n2, container, anchor);
@@ -1338,15 +1386,18 @@ function baseCreateRenderer(options) {
         processComment(n1, n2, container, anchor);
         break;
       case Fragment:
-        processFragment(n1, n2, container, anchor);
+        processFragment(n1, n2, container, anchor, parentComponent);
         break;
       default:
         if (shapeFlag & 1 /* ELEMENT */) {
-          processElement(n1, n2, container, anchor);
+          processElement(n1, n2, container, anchor, parentComponent);
         } else if (shapeFlag & 6 /* COMPONENT */) {
           processComponent(n1, n2, container, anchor, parentComponent);
         }
         break;
+    }
+    if (ref2 !== null && parentComponent) {
+      setRef(ref2, n1 && n1.ref, n2 || n1);
     }
   };
   const unmount = (vnode) => {

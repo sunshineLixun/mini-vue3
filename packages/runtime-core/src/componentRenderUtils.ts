@@ -76,6 +76,8 @@ export interface ComponentInternalInstance {
 
 	// 缓存expose抛出的事件
 	exposed: Record<string, any> | null;
+	// expose代理对象
+	exposeProxy: Data | null;
 
 	// ctx: Data;
 	render: InternalRenderFunction | null;
