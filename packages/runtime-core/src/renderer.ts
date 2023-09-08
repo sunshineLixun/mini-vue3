@@ -9,7 +9,7 @@ import {
 	Comment,
 	Fragment
 } from '@vue/runtime-core';
-import { EMPTY_OBJ, ShapeFlags, isReservedProp } from '@vue/shared';
+import { EMPTY_OBJ, ShapeFlags, isNoEmptyValue, isReservedProp } from '@vue/shared';
 import { createComponentInstance, setupComponent } from './component';
 import { ComponentInternalInstance, renderComponentRoot, shouldUpdateComponent } from './componentRenderUtils';
 import { ReactiveEffect } from '@vue/reactivity';
@@ -740,7 +740,7 @@ function baseCreateRenderer(options: RendererOptions) {
 				break;
 		}
 
-		if (ref !== null && parentComponent) {
+		if (ref != null && parentComponent) {
 			setRef(ref, n1 && n1.ref, n2 || n1);
 		}
 	};

@@ -1396,7 +1396,7 @@ function baseCreateRenderer(options) {
         }
         break;
     }
-    if (ref2 !== null && parentComponent) {
+    if (ref2 != null && parentComponent) {
       setRef(ref2, n1 && n1.ref, n2 || n1);
     }
   };
