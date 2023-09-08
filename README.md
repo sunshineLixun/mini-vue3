@@ -30,12 +30,14 @@
 ## runtime-core
 
 - [x] h函数实现
+- [x] createVNode实现
 - [x] renderer函数实现
 - [x] 初次挂载element实现
 - [x] patchElement (普通tag标签、Component、Text、Common、Fragment)
-- [x] 元素的diff算法
-- [x] 组件的更新流程
+- [x] diff算法
+- [x] 组件的挂载、更新流程
 - [x] nextTick
+- [x] 组件的setup、props、attrs、emit、expose的实现
 
 ## runtime-dom
 
