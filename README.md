@@ -38,6 +38,8 @@
 - [x] 组件的挂载、更新流程
 - [x] nextTick
 - [x] 组件的setup、props、attrs、emit、expose的实现
+- [x] 支持 Vue2组件的data() {}
+- [x] 组件的实例属性实现 $el、$data、$proxy、$slots、.....
 
 ## runtime-dom
 
