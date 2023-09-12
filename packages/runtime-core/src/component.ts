@@ -10,7 +10,17 @@ import { initProps } from './componentProps';
 import { emit } from './componentEmits';
 import { initSlots } from './componentSlots';
 
+export let currentInstance: ComponentInternalInstance | null = null;
+
+export const getCurrentInstance: () => ComponentInternalInstance | null = () => currentInstance;
+
+export const setCurrentInstance = (instance: ComponentInternalInstance) => {
+	currentInstance = instance;
+};
+
 export type Component = any;
+
+export type LifecycleHook<Fn = Function> = Fn[] | null;
 
 // 自增的组件标识符
 let uid = 0;
@@ -65,7 +75,23 @@ export function createComponentInstance(
 		attrsProxy: null,
 		exposeProxy: null,
 
-		setupContext: null
+		setupContext: null,
+
+		// lifecycle
+		bc: null,
+		c: null,
+		bm: null,
+		m: null,
+		bu: null,
+		u: null,
+		um: null,
+		bum: null,
+		da: null,
+		a: null,
+		rtg: null,
+		rtc: null,
+		ec: null,
+		sp: null
 	};
 
 	instance.root = parent ? parent.root : instance;

@@ -2,6 +2,8 @@ import { ReactiveEffect, WatchOptions } from '@vue/reactivity';
 import { Comment, VNode, VNodeChild, createVNode, normalizeVNode } from './vnode';
 import { SchedulerJob, nextTick } from './scheduler';
 import { ShapeFlags } from '@vue/shared';
+import { LifecycleHooks } from './apiLifeCycle';
+import { LifecycleHook } from './component';
 
 export type Data = Record<string, any>;
 
@@ -103,6 +105,63 @@ export interface ComponentInternalInstance {
 
 	// TODO: lifeCycle
 	isMounted: boolean;
+
+	/**
+	 * @internal
+	 */
+	[LifecycleHooks.BEFORE_CREATE]: LifecycleHook;
+	/**
+	 * @internal
+	 */
+	[LifecycleHooks.CREATED]: LifecycleHook;
+	/**
+	 * @internal
+	 */
+	[LifecycleHooks.BEFORE_MOUNT]: LifecycleHook;
+	/**
+	 * @internal
+	 */
+	[LifecycleHooks.MOUNTED]: LifecycleHook;
+	/**
+	 * @internal
+	 */
+	[LifecycleHooks.BEFORE_UPDATE]: LifecycleHook;
+	/**
+	 * @internal
+	 */
+	[LifecycleHooks.UPDATED]: LifecycleHook;
+	/**
+	 * @internal
+	 */
+	[LifecycleHooks.BEFORE_UNMOUNT]: LifecycleHook;
+	/**
+	 * @internal
+	 */
+	[LifecycleHooks.UNMOUNTED]: LifecycleHook;
+	/**
+	 * @internal
+	 */
+	[LifecycleHooks.RENDER_TRACKED]: LifecycleHook;
+	/**
+	 * @internal
+	 */
+	[LifecycleHooks.RENDER_TRIGGERED]: LifecycleHook;
+	/**
+	 * @internal
+	 */
+	[LifecycleHooks.ACTIVATED]: LifecycleHook;
+	/**
+	 * @internal
+	 */
+	[LifecycleHooks.DEACTIVATED]: LifecycleHook;
+	/**
+	 * @internal
+	 */
+	[LifecycleHooks.ERROR_CAPTURED]: LifecycleHook;
+	/**
+	 * @internal
+	 */
+	[LifecycleHooks.SERVER_PREFETCH]: LifecycleHook<() => Promise<unknown>>;
 }
 
 export function renderComponentRoot(instance: ComponentInternalInstance): VNode {
