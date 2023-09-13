@@ -2,7 +2,7 @@ import { ReactiveEffect, WatchOptions } from '@vue/reactivity';
 import { Comment, VNode, VNodeChild, createVNode, normalizeVNode } from './vnode';
 import { SchedulerJob, nextTick } from './scheduler';
 import { ShapeFlags } from '@vue/shared';
-import { LifecycleHooks } from './apiLifeCycle';
+import { LifecycleHooks } from './apiLifecycle';
 import { LifecycleHook } from './component';
 
 export type Data = Record<string, any>;

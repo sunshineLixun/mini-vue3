@@ -25,6 +25,17 @@
 			// 	refValue.value.name = 'lll';
 			// }, 1000);
 
+			// 1.1
+			// const refValue = ref(obj);
+
+			// watchEffect(() => {
+			// 	console.log(refValue.value.name);
+			// });
+
+			// setTimeout(() => {
+			// 	refValue.value.name = 'lll';
+			// }, 1000);
+
 			// 2:
 			// const refVa = ref(1);
 
@@ -76,21 +87,21 @@
 			// }, 1000);
 
 			// 6.
-			const value = toRefs(state);
-			console.log(value);
+			// const value = toRefs(state);
+			// console.log(value);
 
 			// 7.
 
-			let unRefObj = proxyRefs(value);
+			// let unRefObj = proxyRefs(value);
 
-			watchEffect(() => {
-				console.log(unRefObj.name, unRefObj.age);
-			});
+			// watchEffect(() => {
+			// 	console.log(unRefObj.name, unRefObj.age);
+			// });
 
-			setTimeout(() => {
-				unRefObj.name = 'js';
-				unRefObj.age = 10000;
-			}, 1000);
+			// setTimeout(() => {
+			// 	unRefObj.name = 'js';
+			// 	unRefObj.age = 10000;
+			// }, 1000);
 		</script>
 	</body>
 </html>
