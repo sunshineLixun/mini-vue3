@@ -9,7 +9,7 @@ import {
 	Comment,
 	Fragment
 } from '@vue/runtime-core';
-import { EMPTY_OBJ, ShapeFlags, isNoEmptyValue, isReservedProp } from '@vue/shared';
+import { EMPTY_OBJ, ShapeFlags, invokeArrayFns, isReservedProp } from '@vue/shared';
 import { createComponentInstance, setupComponent } from './component';
 import { ComponentInternalInstance, renderComponentRoot, shouldUpdateComponent } from './componentRenderUtils';
 import { ReactiveEffect } from '@vue/reactivity';
@@ -621,6 +621,13 @@ function baseCreateRenderer(options: RendererOptions) {
 		const componentUpdateFn = () => {
 			// 第一次执行
 			if (!instance.isMounted) {
+				// 生命周期函数
+				// beforeMount
+				const { bm, m } = instance;
+				if (bm) {
+					invokeArrayFns(bm);
+				}
+
 				// 1. 渲染组件内容
 				const subTree = (instance.subTree = renderComponentRoot(instance));
 
@@ -630,10 +637,16 @@ function baseCreateRenderer(options: RendererOptions) {
 				// 保存真实dom节点
 				initialVNode.el = subTree.el;
 
+				// 生命周期函数
+				// mounted
+				if (m) {
+					invokeArrayFns(m);
+				}
+
 				// 2. 挂载组件成功
 				instance.isMounted = true;
 			} else {
-				let { next, vnode } = instance;
+				let { next, vnode, bu, u } = instance;
 				// 说明组件props发生了更新
 				if (next) {
 					// 拿到真实dom元素
@@ -643,6 +656,14 @@ function baseCreateRenderer(options: RendererOptions) {
 					// 如果没有，更新成最新的vnode
 					next = vnode;
 				}
+
+				// lifecycle 钩子
+				// beforeUpdate
+
+				if (bu) {
+					invokeArrayFns(bu);
+				}
+
 				// 当组件内部的响应式数据发生变化时，执行
 				const nextTree = renderComponentRoot(instance);
 				// 获取老节点
@@ -653,6 +674,12 @@ function baseCreateRenderer(options: RendererOptions) {
 
 				// 保存下最新的el
 				next.el = nextTree.el;
+
+				// lifecycle 钩子
+				// updated
+				if (u) {
+					invokeArrayFns(u);
+				}
 			}
 		};
 		// 重点: 创建effect
@@ -745,9 +772,36 @@ function baseCreateRenderer(options: RendererOptions) {
 		}
 	};
 
+	const unmountComponent = (instance: ComponentInternalInstance) => {
+		const { update, bum, um, subTree } = instance;
+
+		// beforeUnmount
+		if (bum) {
+			invokeArrayFns(bum);
+		}
+
+		// 当组件存在update属性，表明改组件是处于激活状态，也就是挂载状态
+		if (update) {
+			// 失活响应式
+			update.active = false;
+			unmount(subTree);
+		}
+
+		// unmount
+		if (um) {
+			invokeArrayFns(um);
+		}
+	};
+
 	// 删除元素
 	const unmount: UnmountFn = vnode => {
-		remove(vnode);
+		const { shapeFlag } = vnode;
+
+		if (shapeFlag & ShapeFlags.COMPONENT) {
+			unmountComponent(vnode.component!);
+		} else {
+			remove(vnode);
+		}
 	};
 
 	const remove: RemoveFn = vnode => {

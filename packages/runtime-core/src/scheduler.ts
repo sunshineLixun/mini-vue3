@@ -2,6 +2,7 @@ import { callWithErrorHandling } from './errorHandling';
 
 export interface SchedulerJob extends Function {
 	id?: number;
+	active?: boolean;
 }
 
 const queue: SchedulerJob[] = [];

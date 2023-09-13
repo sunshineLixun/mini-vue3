@@ -42,3 +42,7 @@ export const hasOwn = (val: object, key: string): key is keyof typeof val =>
 export const capitalize = (str: string) => {
 	return str.charAt(0).toUpperCase() + str.slice(1);
 };
+
+export const invokeArrayFns = (fns: Function[], arg?: any) => {
+	fns.forEach(fn => fn(arg));
+};
