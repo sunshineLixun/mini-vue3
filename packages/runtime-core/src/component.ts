@@ -87,11 +87,7 @@ export function createComponentInstance(
 		um: null,
 		bum: null,
 		da: null,
-		a: null,
-		rtg: null,
-		rtc: null,
-		ec: null,
-		sp: null
+		a: null
 	};
 
 	instance.root = parent ? parent.root : instance;
@@ -143,8 +139,12 @@ export function setupStatefulComponent(instance: ComponentInternalInstance) {
 		// 当setup只有一个形参 时，只传入props
 		const setupContext = (instance.setupContext = setup.length > 1 ? createSetupContext(instance) : null);
 
+		// 关联当前组件实例
+		// 在生命周期中要关联当前组件实例
+		setCurrentInstance(instance);
 		const setupResult = callWithErrorHandling(setup, [instance.props, setupContext]);
-
+		// 执行完组件的setup之后，重置当前实例
+		unsetCurrentInstance();
 		handleSetupResult(instance, setupResult);
 
 		// 先不考虑async setup

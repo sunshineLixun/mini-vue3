@@ -103,65 +103,27 @@ export interface ComponentInternalInstance {
 	// 组件就是一个effect
 	effect: ReactiveEffect;
 
-	// TODO: lifeCycle
 	isMounted: boolean;
 
-	/**
-	 * @internal
-	 */
 	[LifecycleHooks.BEFORE_CREATE]: LifecycleHook;
-	/**
-	 * @internal
-	 */
+
 	[LifecycleHooks.CREATED]: LifecycleHook;
-	/**
-	 * @internal
-	 */
+
 	[LifecycleHooks.BEFORE_MOUNT]: LifecycleHook;
-	/**
-	 * @internal
-	 */
+
 	[LifecycleHooks.MOUNTED]: LifecycleHook;
-	/**
-	 * @internal
-	 */
+
 	[LifecycleHooks.BEFORE_UPDATE]: LifecycleHook;
-	/**
-	 * @internal
-	 */
+
 	[LifecycleHooks.UPDATED]: LifecycleHook;
-	/**
-	 * @internal
-	 */
+
 	[LifecycleHooks.BEFORE_UNMOUNT]: LifecycleHook;
-	/**
-	 * @internal
-	 */
+
 	[LifecycleHooks.UNMOUNTED]: LifecycleHook;
-	/**
-	 * @internal
-	 */
-	[LifecycleHooks.RENDER_TRACKED]: LifecycleHook;
-	/**
-	 * @internal
-	 */
-	[LifecycleHooks.RENDER_TRIGGERED]: LifecycleHook;
-	/**
-	 * @internal
-	 */
+
 	[LifecycleHooks.ACTIVATED]: LifecycleHook;
-	/**
-	 * @internal
-	 */
+
 	[LifecycleHooks.DEACTIVATED]: LifecycleHook;
-	/**
-	 * @internal
-	 */
-	[LifecycleHooks.ERROR_CAPTURED]: LifecycleHook;
-	/**
-	 * @internal
-	 */
-	[LifecycleHooks.SERVER_PREFETCH]: LifecycleHook<() => Promise<unknown>>;
 }
 
 export function renderComponentRoot(instance: ComponentInternalInstance): VNode {
@@ -201,7 +163,6 @@ export function shouldUpdateComponent(prevVNode: VNode, nextVNode: VNode): boole
 		}
 	}
 
-	// TODO: emit
 	if (prevProps === nextProps) {
 		return false;
 	}

@@ -805,13 +805,31 @@ function baseCreateRenderer(options: RendererOptions) {
 	};
 
 	const remove: RemoveFn = vnode => {
-		// 保持跟源码一致
-		performRemove(vnode);
+		const { type, el, anchor } = vnode;
+
+		const performRemove = () => {
+			hostRemove(el);
+		};
+
+		if (type === Fragment) {
+			removeFragment(el, anchor);
+		} else {
+			// 保持跟源码一致
+			performRemove();
+		}
 	};
 
-	const performRemove = (vnode: VNode) => {
-		const { el } = vnode;
-		hostRemove(el);
+	const removeFragment = (current: RendererNode, end: RendererNode) => {
+		let next: RendererNode;
+
+		// 从前往后遍历，当循环的节点等于最后一个时，说明中间的children已经全部删除完了。最后删除end节点
+		while (current !== end) {
+			next = hostNextSibling(current);
+			hostRemove(current);
+			current = next;
+		}
+
+		hostRemove(end);
 	};
 
 	const getNextHostNode: NextFn = vnode => {

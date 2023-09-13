@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Document</title>
+	</head>
+	<body>
+		<div id="app"></div>
+		<script type="module">
+			import {
+				h,
+				render,
+				ref,
+				Fragment,
+				onMounted,
+				onBeforeMount,
+				onUnmounted,
+				onBeforeUpdate,
+				onUpdated,
+				getCurrentInstance
+			} from './runtime-core.esm-bundler.js';
+
+			// 1. onBeforeMount  onMounted
+			// const Com = {
+			// 	setup() {
+			// 		onBeforeMount(() => {
+			// 			console.log('onBeforeMount');
+			// 		});
+
+			// 		onMounted(() => {
+			// 			console.log('onMounted');
+			// 		});
+
+			// 		onUnmounted(() => {
+			// 			console.log('onUnmounted');
+			// 		});
+			// 		return () => h(Fragment, [h('div', 'hello world')]);
+			// 	}
+			// };
+
+			// render(h(Com), app);
+
+			// 2. onUnmounted
+			// const Com = {
+			// 	setup() {
+			// 		onUnmounted(() => {
+			// 			console.log('onUnmounted');
+			// 		});
+			// 		return () => h(Fragment, [h('div', 'hello world')]);
+			// 	}
+			// };
+
+			// render(h(Com), app);
+
+			// setTimeout(() => {
+			// 	render(h('div', 'hello'), app);
+			// }, 1000);
+
+			// 3 onBeforeUpdate onUpdated
+			// const Com = {
+			// 	setup() {
+			// 		const age = ref(1);
+
+			// 		setTimeout(() => {
+			// 			age.value++;
+			// 		}, 1000);
+
+			// 		onBeforeUpdate(() => {
+			// 			console.log('onBeforeUpdate');
+			// 		});
+
+			// 		onUpdated(() => {
+			// 			console.log('onUpdated');
+			// 		});
+
+			// 		return () => h(Fragment, [h('div', age.value)]);
+			// 	}
+			// };
+
+			// render(h(Com), app);
+
+			// 4. getCurrentInstance
+			const Com = {
+				setup() {
+					const curr = getCurrentInstance();
+					console.log(curr);
+
+					const res = onMounted(() => {
+						const curr = getCurrentInstance();
+						console.log('生命周期获取组件实例', curr);
+						return () => {
+							console.log(111);
+						};
+					});
+
+					const mRes = res();
+					mRes();
+
+					return () => h(Fragment, 'hello');
+				}
+			};
+
+			render(h(Com), app);
+		</script>
+	</body>
+</html>

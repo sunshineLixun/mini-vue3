@@ -31,6 +31,9 @@ var hasOwn = (val, key) => Object.prototype.hasOwnProperty.call(val, key);
 var capitalize = (str) => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
+var invokeArrayFns = (fns, arg) => {
+  fns.forEach((fn) => fn(arg));
+};
 
 // packages/runtime-core/src/errorHandling.ts
 function callWithErrorHandling(fn, args) {
@@ -914,6 +917,10 @@ function updateSlots(instance, children) {
 }
 
 // packages/runtime-core/src/component.ts
+var currentInstance = null;
+var getCurrentInstance = () => currentInstance;
+var setCurrentInstance = (instance) => currentInstance = instance;
+var unsetCurrentInstance = () => currentInstance = null;
 var uid = 0;
 function createComponentInstance(vnode, parent) {
   const { type } = vnode;
@@ -945,7 +952,18 @@ function createComponentInstance(vnode, parent) {
     exposed: null,
     attrsProxy: null,
     exposeProxy: null,
-    setupContext: null
+    setupContext: null,
+    // lifecycle
+    bc: null,
+    c: null,
+    bm: null,
+    m: null,
+    bu: null,
+    u: null,
+    um: null,
+    bum: null,
+    da: null,
+    a: null
   };
   instance.root = parent ? parent.root : instance;
   instance.emit = emit.bind(null, instance);
@@ -979,7 +997,9 @@ function setupStatefulComponent(instance) {
   instance.proxy = new Proxy(instance, PublicInstanceProxyHandlers);
   if (setup) {
     const setupContext = instance.setupContext = setup.length > 1 ? createSetupContext(instance) : null;
+    setCurrentInstance(instance);
     const setupResult = callWithErrorHandling(setup, [instance.props, setupContext]);
+    unsetCurrentInstance();
     handleSetupResult(instance, setupResult);
   } else {
     if (Component.data && isFunction(Component.data)) {
@@ -1329,23 +1349,36 @@ function baseCreateRenderer(options) {
   const setupRenderEffect = (instance, initialVNode, container, anchor) => {
     const componentUpdateFn = () => {
       if (!instance.isMounted) {
+        const { bm, m } = instance;
+        if (bm) {
+          invokeArrayFns(bm);
+        }
         const subTree = instance.subTree = renderComponentRoot(instance);
         patch(null, subTree, container, anchor, instance);
         initialVNode.el = subTree.el;
+        if (m) {
+          invokeArrayFns(m);
+        }
         instance.isMounted = true;
       } else {
-        let { next, vnode } = instance;
+        let { next, vnode, bu, u } = instance;
         if (next) {
           next.el = vnode.el;
           updateComponentPreRender(instance, next);
         } else {
           next = vnode;
         }
+        if (bu) {
+          invokeArrayFns(bu);
+        }
         const nextTree = renderComponentRoot(instance);
         const prevTree = instance.subTree;
         instance.subTree = nextTree;
         patch(prevTree, nextTree, hostParentNode(prevTree.el), getNextHostNode(prevTree), instance);
         next.el = nextTree.el;
+        if (u) {
+          invokeArrayFns(u);
+        }
       }
     };
     const effect2 = instance.effect = new ReactiveEffect(componentUpdateFn, () => queueJob(update));
@@ -1400,15 +1433,46 @@ function baseCreateRenderer(options) {
       setRef(ref2, n1 && n1.ref, n2 || n1);
     }
   };
+  const unmountComponent = (instance) => {
+    const { update, bum, um, subTree } = instance;
+    if (bum) {
+      invokeArrayFns(bum);
+    }
+    if (update) {
+      update.active = false;
+      unmount(subTree);
+    }
+    if (um) {
+      invokeArrayFns(um);
+    }
+  };
   const unmount = (vnode) => {
-    remove(vnode);
+    const { shapeFlag } = vnode;
+    if (shapeFlag & 6 /* COMPONENT */) {
+      unmountComponent(vnode.component);
+    } else {
+      remove(vnode);
+    }
   };
   const remove = (vnode) => {
-    performRemove(vnode);
+    const { type, el, anchor } = vnode;
+    const performRemove = () => {
+      hostRemove(el);
+    };
+    if (type === Fragment) {
+      removeFragment(el, anchor);
+    } else {
+      performRemove();
+    }
   };
-  const performRemove = (vnode) => {
-    const { el } = vnode;
-    hostRemove(el);
+  const removeFragment = (current, end) => {
+    let next;
+    while (current !== end) {
+      next = hostNextSibling(current);
+      hostRemove(current);
+      current = next;
+    }
+    hostRemove(end);
   };
   const getNextHostNode = (vnode) => {
     if (vnode.shapeFlag & 6 /* COMPONENT */) {
@@ -1452,6 +1516,41 @@ function h(type, propsOrChildren, children, ..._) {
     return createVNode(type, propsOrChildren, children);
   }
 }
+
+// packages/runtime-core/src/apiLifecycle.ts
+var LifecycleHooks = /* @__PURE__ */ ((LifecycleHooks2) => {
+  LifecycleHooks2["BEFORE_CREATE"] = "bc";
+  LifecycleHooks2["CREATED"] = "c";
+  LifecycleHooks2["BEFORE_MOUNT"] = "bm";
+  LifecycleHooks2["MOUNTED"] = "m";
+  LifecycleHooks2["BEFORE_UPDATE"] = "bu";
+  LifecycleHooks2["UPDATED"] = "u";
+  LifecycleHooks2["BEFORE_UNMOUNT"] = "bum";
+  LifecycleHooks2["UNMOUNTED"] = "um";
+  LifecycleHooks2["DEACTIVATED"] = "da";
+  LifecycleHooks2["ACTIVATED"] = "a";
+  return LifecycleHooks2;
+})(LifecycleHooks || {});
+function injectHook(type, hook, target = currentInstance) {
+  if (target) {
+    const hooks = target[type] || (target[type] = []);
+    const wrappedHook = (...args) => {
+      setCurrentInstance(target);
+      const res = callWithErrorHandling(hook, args);
+      unsetCurrentInstance();
+      return res;
+    };
+    hooks.push(wrappedHook);
+    return wrappedHook;
+  }
+}
+var createHook = (lifecycle) => (hook, target = currentInstance) => injectHook(lifecycle, (...arrgs) => hook(...arrgs), target);
+var onBeforeMount = createHook("bm" /* BEFORE_MOUNT */);
+var onMounted = createHook("m" /* MOUNTED */);
+var onBeforeUpdate = createHook("bu" /* BEFORE_UPDATE */);
+var onUpdated = createHook("u" /* UPDATED */);
+var onBeforeUnmount = createHook("bum" /* BEFORE_UNMOUNT */);
+var onUnmounted = createHook("um" /* UNMOUNTED */);
 
 // packages/runtime-dom/src/nodeOps.ts
 var nodeOps = {
@@ -1585,6 +1684,7 @@ var render = (...args) => {
 export {
   Comment,
   Fragment,
+  LifecycleHooks,
   ReactiveEffect,
   ReactiveFlags,
   Text,
@@ -1592,11 +1692,13 @@ export {
   cleanupEffect,
   cloneVNode,
   computed,
+  createHook,
   createReactiveObject,
   createRenderer,
   createVNode,
   effect,
   effectScope,
+  getCurrentInstance,
   getCurrentScope,
   h,
   isProxy,
@@ -1608,7 +1710,13 @@ export {
   nextTick,
   normalizeChildren,
   normalizeVNode,
+  onBeforeMount,
+  onBeforeUnmount,
+  onBeforeUpdate,
+  onMounted,
   onScopeDispose,
+  onUnmounted,
+  onUpdated,
   proxyRefs,
   queueJob,
   reactive,

@@ -6,3 +6,5 @@ export * from './apiLifecycle';
 
 export * from '@vue/runtime-dom';
 export * from '@vue/reactivity';
+
+export { getCurrentInstance } from './component';
