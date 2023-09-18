@@ -85,6 +85,9 @@ export interface VNode<HostNode = RendererNode, ExtraProps = { [key: string]: an
 	anchor: HostNode | null; // fragment anchor
 
 	// teleport
+	target: RendererNode | null;
+
+	// teleport
 	targetAnchor: HostNode | null; // fragment anchor
 
 	/**node元素类型flag */
@@ -147,6 +150,7 @@ function createBaseVNode(
 		children,
 		el: null, // 真实节点 初始化为null
 		anchor: null,
+		target: null,
 		targetAnchor: null,
 		component: null,
 		shapeFlag

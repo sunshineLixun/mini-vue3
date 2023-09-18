@@ -10,7 +10,32 @@
 		<script type="module">
 			import { ref, h, render, Fragment, Teleport, Comment, Text } from './runtime-core.esm-bundler.js';
 
+			// 1: render Teleport
+			// render(h(Teleport, { to: 'body' }, h('div', '这是一个弹窗')), app);
+
+			// 2: disabled Teleport
+			// render(h(Teleport, { to: 'body', disabled: true }, h('div', '这是一个弹窗')), app);
+
+			// 3: update children
+			// const oldChild = h('div', 'teleported');
+			// const newChild = h(Text, null, 'new teleport');
+			// const change = ref(false);
+
+			// render(
+			// 	h(() => h(Teleport, { to: 'body' }, change.value ? newChild : oldChild)),
+			// 	app
+			// );
+
+			// setTimeout(() => {
+			// 	change.value = !change.value;
+			// }, 1000);
+
+			// 4 remove
 			render(h(Teleport, { to: 'body' }, h('div', '这是一个弹窗')), app);
+
+			setTimeout(() => {
+				render(null, app);
+			}, 1000);
 		</script>
 	</body>
 </html>

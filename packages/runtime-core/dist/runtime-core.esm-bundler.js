@@ -801,35 +801,61 @@ function emit(instance, event, ...args) {
 
 // packages/runtime-core/src/components/Teleport.ts
 var isTeleport = (type) => type.__isTeleport;
+var isTeleportDisabled = (props) => props && props.disabled;
 var TeleportImpl = {
   __isTeleport: true,
   process(n1, n2, container, anchor, parentComponent, internals) {
     const {
       mc: mountComponent,
+      pc: patchChildren,
       o: { quertSelector, insert, createText }
     } = internals;
     const { shapeFlag, children } = n2;
+    const disabled = isTeleportDisabled(n2.props);
     if (n1 == null) {
       const placeholder = n2.el = createText("");
       const mainAnchor = n2.anchor = createText("");
       insert(placeholder, container, anchor);
       insert(mainAnchor, container, anchor);
-      const target = resolveTarget(n2.props, quertSelector);
+      const target = n2.target = resolveTarget(n2.props, quertSelector);
       const targetAnchor = n2.targetAnchor = createText("");
+      if (target) {
+        insert(targetAnchor, target);
+      }
       const mount = (container2, anchor2) => {
         if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
           mountComponent(children, container2, anchor2, parentComponent);
         }
       };
-      if (target) {
-        insert(targetAnchor, target);
+      if (disabled) {
+        mount(container, mainAnchor);
+      } else {
         mount(target, targetAnchor);
       }
     } else {
       n2.el = n1.el;
+      const target = n2.target = n1.target;
+      const mainAnchor = n2.anchor = n1.anchor;
+      const targetAnchor = n2.targetAnchor = n1.targetAnchor;
+      const wasDisabled = isTeleportDisabled(n1.props);
+      const currentTarget = wasDisabled ? container : target;
+      const currentAnchor = wasDisabled ? mainAnchor : targetAnchor;
+      patchChildren(n1, n2, currentTarget, currentAnchor, parentComponent);
     }
   },
-  remove() {
+  remove(vnode, { um: unmount, o: { remove: hostRemove } }) {
+    const { shapeFlag, target, targetAnchor, props, anchor, children } = vnode;
+    if (target) {
+      hostRemove(targetAnchor);
+    }
+    if (!isTeleportDisabled(props)) {
+      hostRemove(anchor);
+      if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+        for (let i = 0; i < children.length; i++) {
+          unmount(children[i]);
+        }
+      }
+    }
   }
 };
 var Teleport = TeleportImpl;
@@ -874,6 +900,7 @@ function createBaseVNode(type, props = null, children = null, shapeFlag = type =
     el: null,
     // 真实节点 初始化为null
     anchor: null,
+    target: null,
     targetAnchor: null,
     component: null,
     shapeFlag
@@ -1503,9 +1530,11 @@ function baseCreateRenderer(options) {
     }
   };
   const unmount = (vnode) => {
-    const { shapeFlag } = vnode;
+    const { shapeFlag, type } = vnode;
     if (shapeFlag & 6 /* COMPONENT */) {
       unmountComponent(vnode.component);
+    } else if (shapeFlag & 64 /* TELEPORT */) {
+      type.remove(vnode, internals);
     } else {
       remove(vnode);
     }

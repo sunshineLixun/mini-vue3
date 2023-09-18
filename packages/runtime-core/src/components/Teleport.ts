@@ -5,6 +5,8 @@ import { ShapeFlags, isString } from '@vue/shared';
 
 export const isTeleport = (type: any): boolean => type.__isTeleport;
 
+export const isTeleportDisabled = (props: VNode['props']) => props && props.disabled;
+
 export interface TeleportProps {
 	to: string | RendererElement | null | undefined;
 	disabled: boolean;
@@ -24,10 +26,12 @@ export const TeleportImpl = {
 	) {
 		const {
 			mc: mountComponent,
+			pc: patchChildren,
 			o: { quertSelector, insert, createText }
 		} = internals;
 
 		const { shapeFlag, children } = n2;
+		const disabled = isTeleportDisabled(n2.props);
 
 		if (n1 == null) {
 			// first mount
@@ -42,8 +46,13 @@ export const TeleportImpl = {
 			insert(placeholder, container, anchor);
 			insert(mainAnchor, container, anchor);
 
-			const target = resolveTarget(n2.props, quertSelector);
+			const target = (n2.target = resolveTarget(n2.props, quertSelector));
 			const targetAnchor = (n2.targetAnchor = createText(''));
+
+			if (target) {
+				// targetAnchor记录目标节点
+				insert(targetAnchor, target);
+			}
 
 			const mount = (container: RendererElement, anchor: RendererNode | null) => {
 				// teleport 子元素必须是数组
@@ -51,17 +60,54 @@ export const TeleportImpl = {
 					mountComponent(children as VNodeArrayChildren, container, anchor, parentComponent);
 				}
 			};
-			if (target) {
-				// targetAnchor记录目标节点
-				insert(targetAnchor, target);
+
+			if (disabled) {
+				// 如果disabled，添加到传入的container，通常情况下是app下
+				mount(container, mainAnchor);
+			} else {
 				mount(target, targetAnchor);
 			}
 		} else {
 			// update
 			n2.el = n1.el;
+			const target = (n2.target = n1.target);
+			const mainAnchor = (n2.anchor = n1.anchor);
+			const targetAnchor = (n2.targetAnchor = n1.targetAnchor);
+
+			// 看下之前的元素
+			const wasDisabled = isTeleportDisabled(n1.props);
+
+			const currentTarget = wasDisabled ? container : target;
+			const currentAnchor = wasDisabled ? mainAnchor : targetAnchor;
+
+			patchChildren(n1, n2, currentTarget, currentAnchor, parentComponent);
+
+			// if (disabled) {
+
+			// } else {
+
+			// }
 		}
 	},
-	remove() {}
+	remove(vnode: VNode, { um: unmount, o: { remove: hostRemove } }: RendererInternals) {
+		const { shapeFlag, target, targetAnchor, props, anchor, children } = vnode;
+
+		// 清空记录位置
+		if (target) {
+			hostRemove(targetAnchor);
+		}
+
+		if (!isTeleportDisabled(props)) {
+			// 清空记录位置
+			hostRemove(anchor);
+			if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+				// 移除子元素
+				for (let i = 0; i < children.length; i++) {
+					unmount(children[i] as VNode);
+				}
+			}
+		}
+	}
 };
 
 export const Teleport = TeleportImpl as unknown as {

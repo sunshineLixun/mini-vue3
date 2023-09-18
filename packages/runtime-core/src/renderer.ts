@@ -822,10 +822,12 @@ function baseCreateRenderer(options: RendererOptions) {
 
 	// 删除元素
 	const unmount: UnmountFn = vnode => {
-		const { shapeFlag } = vnode;
+		const { shapeFlag, type } = vnode;
 
 		if (shapeFlag & ShapeFlags.COMPONENT) {
 			unmountComponent(vnode.component!);
+		} else if (shapeFlag & ShapeFlags.TELEPORT) {
+			(type as typeof TeleportImpl).remove(vnode, internals);
 		} else {
 			remove(vnode);
 		}
