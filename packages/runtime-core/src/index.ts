@@ -7,4 +7,6 @@ export * from './apiLifecycle';
 export * from '@vue/runtime-dom';
 export * from '@vue/reactivity';
 
+export { Teleport, type TeleportProps } from './components/Teleport';
+
 export { getCurrentInstance } from './component';

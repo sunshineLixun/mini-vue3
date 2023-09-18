@@ -17,6 +17,19 @@ import { SchedulerJob, queueJob } from './scheduler';
 import { updateProps } from './componentProps';
 import { updateSlots } from './componentSlots';
 import { setRef } from './rendererTemplateRef';
+import { TeleportImpl, TeleportVNode } from './components/Teleport';
+
+export interface RendererInternals<HostNode = RendererNode, HostElement = RendererElement> {
+	p: PatchFn;
+	um: UnmountFn;
+	r: RemoveFn;
+	m: MoveFn;
+	mt: MountComponentFn;
+	mc: MountChildrenFn;
+	pc: PatchChildrenFn;
+	n: NextFn;
+	o: RendererOptions<HostNode, HostElement>;
+}
 
 export interface Renderer<HostElement = RendererElement> {
 	render: RootRenderFunction<HostElement>;
@@ -31,7 +44,7 @@ export interface RendererOptions<HostNode = RendererNode, HostElement = Renderer
 	 * @param parent 父元素
 	 * @param anchor 描点 节点
 	 */
-	insert(el: HostNode, parent: HostElement, anchor: HostNode | null): void;
+	insert(el: HostNode, parent: HostElement, anchor?: HostNode | null): void;
 	/**
 	 * 删除
 	 * @param el 子节点
@@ -165,6 +178,15 @@ export type SetupRenderEffectFn = (
 	container: RendererElement,
 	anchor: RendererNode | null
 ) => void;
+
+export type MountComponentFn = (
+	initialVNode: VNode,
+	container: RendererElement,
+	anchor: RendererNode | null,
+	parentComponent: ComponentInternalInstance
+) => void;
+
+export type MoveFn = () => void;
 
 export function createRenderer(options: RendererOptions) {
 	return baseCreateRenderer(options);
@@ -545,7 +567,7 @@ function baseCreateRenderer(options: RendererOptions) {
 	const processText: ProcessTextFn = (n1, n2, el, anchor) => {
 		if (n1 === null) {
 			// 挂载
-			hostInsert((n2.el = hostCreateText(n2.children as string)), el, anchor);
+			hostInsert((n2.el = hostCreateText((n2.children || '') as string)), el, anchor);
 		} else {
 			// 更新
 			const el = (n2.el = n1.el);
@@ -670,6 +692,7 @@ function baseCreateRenderer(options: RendererOptions) {
 				const prevTree = instance.subTree;
 				// 更新老节点
 				instance.subTree = nextTree;
+
 				patch(prevTree, nextTree, hostParentNode(prevTree.el!), getNextHostNode(prevTree), instance);
 
 				// 保存下最新的el
@@ -695,12 +718,7 @@ function baseCreateRenderer(options: RendererOptions) {
 	};
 
 	// 初次挂载组件
-	const mountComponent = (
-		initialVNode: VNode,
-		container: RendererElement,
-		anchor: RendererNode | null,
-		parentComponent: ComponentInternalInstance
-	) => {
+	const mountComponent: MountComponentFn = (initialVNode, container, anchor, parentComponent) => {
 		const instance = (initialVNode.component = createComponentInstance(initialVNode, parentComponent));
 
 		setupComponent(instance);
@@ -763,6 +781,15 @@ function baseCreateRenderer(options: RendererOptions) {
 				} else if (shapeFlag & ShapeFlags.COMPONENT) {
 					// 组件
 					processComponent(n1, n2, container, anchor, parentComponent);
+				} else if (shapeFlag & ShapeFlags.TELEPORT) {
+					(type as typeof TeleportImpl).process(
+						n1 as TeleportVNode,
+						n2 as TeleportVNode,
+						container,
+						anchor,
+						parentComponent,
+						internals
+					);
 				}
 				break;
 		}
@@ -839,6 +866,9 @@ function baseCreateRenderer(options: RendererOptions) {
 		return hostNextSibling(vnode.anchor || vnode.el);
 	};
 
+	//TODO: teleport move
+	const move: MoveFn = () => {};
+
 	const render: RootRenderFunction = (vnode, container) => {
 		if (vnode == null) {
 			// 没有新节点 但是有旧的节点，要删除 卸载掉
@@ -851,6 +881,19 @@ function baseCreateRenderer(options: RendererOptions) {
 		// 保存老节点
 		container._vnode = vnode;
 	};
+
+	const internals = {
+		p: patch,
+		um: unmount,
+		m: move,
+		r: remove,
+		mt: mountComponent,
+		mc: mountChildren,
+		pc: patchChildren,
+		n: getNextHostNode,
+		o: options
+	};
+
 	return {
 		render
 	};

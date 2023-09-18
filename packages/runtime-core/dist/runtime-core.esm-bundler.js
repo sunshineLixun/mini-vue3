@@ -799,6 +799,52 @@ function emit(instance, event, ...args) {
   }
 }
 
+// packages/runtime-core/src/components/Teleport.ts
+var isTeleport = (type) => type.__isTeleport;
+var TeleportImpl = {
+  __isTeleport: true,
+  process(n1, n2, container, anchor, parentComponent, internals) {
+    const {
+      mc: mountComponent,
+      o: { quertSelector, insert, createText }
+    } = internals;
+    const { shapeFlag, children } = n2;
+    if (n1 == null) {
+      const placeholder = n2.el = createText("");
+      const mainAnchor = n2.anchor = createText("");
+      insert(placeholder, container, anchor);
+      insert(mainAnchor, container, anchor);
+      const target = resolveTarget(n2.props, quertSelector);
+      const targetAnchor = n2.targetAnchor = createText("");
+      const mount = (container2, anchor2) => {
+        if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+          mountComponent(children, container2, anchor2, parentComponent);
+        }
+      };
+      if (target) {
+        insert(targetAnchor, target);
+        mount(target, targetAnchor);
+      }
+    } else {
+      n2.el = n1.el;
+    }
+  },
+  remove() {
+  }
+};
+var Teleport = TeleportImpl;
+function resolveTarget(props, select) {
+  const targetSelector = props && props.to;
+  if (isString(targetSelector)) {
+    if (!select) {
+      return null;
+    }
+    return select(targetSelector);
+  } else {
+    return targetSelector;
+  }
+}
+
 // packages/runtime-core/src/vnode.ts
 var Fragment = Symbol.for("v-fgt");
 var Text = Symbol.for("v-txt");
@@ -814,7 +860,7 @@ var normalizeRef = ({ ref: ref2 }) => {
   return ref2;
 };
 function createVNode(type, props = null, children = null) {
-  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : isFunction(type) ? 2 /* FUNCTIONAL_COMPONENT */ : 0;
+  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isTeleport(type) ? 64 /* TELEPORT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : isFunction(type) ? 2 /* FUNCTIONAL_COMPONENT */ : 0;
   return createBaseVNode(type, props, children, shapeFlag);
 }
 function createBaseVNode(type, props = null, children = null, shapeFlag = type === Fragment ? 0 : 1 /* ELEMENT */) {
@@ -828,6 +874,7 @@ function createBaseVNode(type, props = null, children = null, shapeFlag = type =
     el: null,
     // 真实节点 初始化为null
     anchor: null,
+    targetAnchor: null,
     component: null,
     shapeFlag
   };
@@ -1305,7 +1352,7 @@ function baseCreateRenderer(options) {
   };
   const processText = (n1, n2, el, anchor) => {
     if (n1 === null) {
-      hostInsert(n2.el = hostCreateText(n2.children), el, anchor);
+      hostInsert(n2.el = hostCreateText(n2.children || ""), el, anchor);
     } else {
       const el2 = n2.el = n1.el;
       if (n2.children !== n1.children) {
@@ -1426,6 +1473,15 @@ function baseCreateRenderer(options) {
           processElement(n1, n2, container, anchor, parentComponent);
         } else if (shapeFlag & 6 /* COMPONENT */) {
           processComponent(n1, n2, container, anchor, parentComponent);
+        } else if (shapeFlag & 64 /* TELEPORT */) {
+          type.process(
+            n1,
+            n2,
+            container,
+            anchor,
+            parentComponent,
+            internals
+          );
         }
         break;
     }
@@ -1480,6 +1536,8 @@ function baseCreateRenderer(options) {
     }
     return hostNextSibling(vnode.anchor || vnode.el);
   };
+  const move = () => {
+  };
   const render2 = (vnode, container) => {
     if (vnode == null) {
       if (container._vnode) {
@@ -1489,6 +1547,17 @@ function baseCreateRenderer(options) {
       patch(container._vnode || null, vnode, container, null, null);
     }
     container._vnode = vnode;
+  };
+  const internals = {
+    p: patch,
+    um: unmount,
+    m: move,
+    r: remove,
+    mt: mountComponent,
+    mc: mountChildren,
+    pc: patchChildren,
+    n: getNextHostNode,
+    o: options
   };
   return {
     render: render2
@@ -1687,6 +1756,7 @@ export {
   LifecycleHooks,
   ReactiveEffect,
   ReactiveFlags,
+  Teleport,
   Text,
   activeEffect,
   cleanupEffect,

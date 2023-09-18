@@ -3,6 +3,7 @@ import { ShapeFlags, isArray, isFunction, isObject, isString } from '@vue/shared
 import { RendererNode } from './renderer';
 import { Component } from './component';
 import { ComponentInternalInstance } from './componentRenderUtils';
+import { isTeleport } from './components/Teleport';
 
 // ref='xxx'
 // ref="ref('xxx)"
@@ -83,6 +84,9 @@ export interface VNode<HostNode = RendererNode, ExtraProps = { [key: string]: an
 	 */
 	anchor: HostNode | null; // fragment anchor
 
+	// teleport
+	targetAnchor: HostNode | null; // fragment anchor
+
 	/**node元素类型flag */
 	/**标记自己是什么类型和孩子是什么类型 */
 	shapeFlag: number;
@@ -117,6 +121,8 @@ export function createVNode(
 	// 如果是对象，则为组件类型
 	const shapeFlag = isString(type)
 		? ShapeFlags.ELEMENT
+		: isTeleport(type)
+		? ShapeFlags.TELEPORT
 		: isObject(type)
 		? ShapeFlags.STATEFUL_COMPONENT
 		: isFunction(type)
@@ -141,6 +147,7 @@ function createBaseVNode(
 		children,
 		el: null, // 真实节点 初始化为null
 		anchor: null,
+		targetAnchor: null,
 		component: null,
 		shapeFlag
 	};
