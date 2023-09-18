@@ -14,6 +14,12 @@ export interface TeleportProps {
 
 export type TeleportVNode = VNode<RendererNode, TeleportProps>;
 
+export const enum TeleportMoveTypes {
+	TARGET_CHANGE, // target change
+	TOGGLE, // enable / disable
+	REORDER // moved in the main view
+}
+
 export const TeleportImpl = {
 	__isTeleport: true,
 	process(
@@ -82,11 +88,19 @@ export const TeleportImpl = {
 
 			patchChildren(n1, n2, currentTarget, currentAnchor, parentComponent);
 
-			// if (disabled) {
+			if (disabled) {
+				// TODO: disabled的变化
+			} else {
+				// target的变化
 
-			// } else {
+				if ((n2.props && n2.props.to) !== (n1.props && n1.props.to)) {
+					const newTarget = resolveTarget(n2.props, quertSelector);
 
-			// }
+					if (newTarget) {
+						moveTeleport(n2, newTarget, null, internals, TeleportMoveTypes.TARGET_CHANGE);
+					}
+				}
+			}
 		}
 	},
 	remove(vnode: VNode, { um: unmount, o: { remove: hostRemove } }: RendererInternals) {
@@ -107,8 +121,38 @@ export const TeleportImpl = {
 				}
 			}
 		}
-	}
+	},
+
+	move: moveTeleport
 };
+
+function moveTeleport(
+	vnode: VNode,
+	container: RendererElement,
+	parentAnchor: RendererNode | null,
+	{ o: { insert }, m: move }: RendererInternals,
+	moveType: TeleportMoveTypes = TeleportMoveTypes.REORDER
+) {
+	// 插入到新的位置
+	if (moveType === TeleportMoveTypes.TARGET_CHANGE) {
+		insert(vnode.targetAnchor, container, parentAnchor);
+	}
+
+	const { shapeFlag, children, el, props } = vnode;
+	const isReorder = moveType === TeleportMoveTypes.REORDER;
+
+	// 子元素都插入到自己的父元素里面
+	if (isReorder) {
+		insert(el, container, parentAnchor);
+	}
+
+	if (!isReorder || isTeleportDisabled(props)) {
+		// 移动子元素
+		if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+			(children as VNode[]).forEach((child: VNode) => move(child, container, parentAnchor));
+		}
+	}
+}
 
 export const Teleport = TeleportImpl as unknown as {
 	__isTeleport: true;

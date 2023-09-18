@@ -186,7 +186,7 @@ export type MountComponentFn = (
 	parentComponent: ComponentInternalInstance
 ) => void;
 
-export type MoveFn = () => void;
+export type MoveFn = (vnode: VNode, container: RendererElement, anchor: RendererNode | null) => void;
 
 export function createRenderer(options: RendererOptions) {
 	return baseCreateRenderer(options);
@@ -868,8 +868,32 @@ function baseCreateRenderer(options: RendererOptions) {
 		return hostNextSibling(vnode.anchor || vnode.el);
 	};
 
-	//TODO: teleport move
-	const move: MoveFn = () => {};
+	const move: MoveFn = (vnode, container, anchor) => {
+		const { type, shapeFlag, el, children } = vnode;
+		if (shapeFlag & ShapeFlags.COMPONENT) {
+			move(vnode.component.subTree, container, anchor);
+			return;
+		}
+
+		if (type === Fragment) {
+			// 将el真实节点插入新的container
+			hostInsert(el, container, anchor);
+
+			(children as VNode[]).forEach((child: VNode) => move(child, container, anchor));
+
+			// 记录 anchor
+			hostInsert(vnode.anchor, container, anchor);
+
+			return;
+		}
+
+		if (shapeFlag & ShapeFlags.TELEPORT) {
+			(type as typeof TeleportImpl).move(vnode, container, anchor, internals);
+			return;
+		} else {
+			hostInsert(el, container, anchor);
+		}
+	};
 
 	const render: RootRenderFunction = (vnode, container) => {
 		if (vnode == null) {

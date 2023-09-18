@@ -841,6 +841,15 @@ var TeleportImpl = {
       const currentTarget = wasDisabled ? container : target;
       const currentAnchor = wasDisabled ? mainAnchor : targetAnchor;
       patchChildren(n1, n2, currentTarget, currentAnchor, parentComponent);
+      if (disabled) {
+      } else {
+        if ((n2.props && n2.props.to) !== (n1.props && n1.props.to)) {
+          const newTarget = resolveTarget(n2.props, quertSelector);
+          if (newTarget) {
+            moveTeleport(n2, newTarget, null, internals, 0 /* TARGET_CHANGE */);
+          }
+        }
+      }
     }
   },
   remove(vnode, { um: unmount, o: { remove: hostRemove } }) {
@@ -856,8 +865,24 @@ var TeleportImpl = {
         }
       }
     }
-  }
+  },
+  move: moveTeleport
 };
+function moveTeleport(vnode, container, parentAnchor, { o: { insert }, m: move }, moveType = 2 /* REORDER */) {
+  if (moveType === 0 /* TARGET_CHANGE */) {
+    insert(vnode.targetAnchor, container, parentAnchor);
+  }
+  const { shapeFlag, children, el, props } = vnode;
+  const isReorder = moveType === 2 /* REORDER */;
+  if (isReorder) {
+    insert(el, container, parentAnchor);
+  }
+  if (!isReorder || isTeleportDisabled(props)) {
+    if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+      children.forEach((child) => move(child, container, parentAnchor));
+    }
+  }
+}
 var Teleport = TeleportImpl;
 function resolveTarget(props, select) {
   const targetSelector = props && props.to;
@@ -1565,7 +1590,24 @@ function baseCreateRenderer(options) {
     }
     return hostNextSibling(vnode.anchor || vnode.el);
   };
-  const move = () => {
+  const move = (vnode, container, anchor) => {
+    const { type, shapeFlag, el, children } = vnode;
+    if (shapeFlag & 6 /* COMPONENT */) {
+      move(vnode.component.subTree, container, anchor);
+      return;
+    }
+    if (type === Fragment) {
+      hostInsert(el, container, anchor);
+      children.forEach((child) => move(child, container, anchor));
+      hostInsert(vnode.anchor, container, anchor);
+      return;
+    }
+    if (shapeFlag & 64 /* TELEPORT */) {
+      type.move(vnode, container, anchor, internals);
+      return;
+    } else {
+      hostInsert(el, container, anchor);
+    }
   };
   const render2 = (vnode, container) => {
     if (vnode == null) {
