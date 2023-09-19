@@ -654,6 +654,7 @@ function baseCreateRenderer(options: RendererOptions) {
 				const subTree = (instance.subTree = renderComponentRoot(instance));
 
 				// patch children
+				// instance 是当前父组件实例
 				patch(null, subTree, container, anchor, instance);
 
 				// 保存真实dom节点
