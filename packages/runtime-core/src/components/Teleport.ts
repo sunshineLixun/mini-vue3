@@ -149,7 +149,7 @@ function moveTeleport(
 	if (!isReorder || isTeleportDisabled(props)) {
 		// 移动子元素
 		if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-			(children as VNode[]).forEach((child: VNode) => move(child, container, parentAnchor));
+			(children as VNode[]).forEach(child => move(child, container, parentAnchor));
 		}
 	}
 }
