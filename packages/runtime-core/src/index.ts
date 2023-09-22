@@ -10,3 +10,5 @@ export * from '@vue/reactivity';
 export { Teleport, type TeleportProps } from './components/Teleport';
 
 export { getCurrentInstance } from './component';
+
+export { provide, inject } from './apiInject';

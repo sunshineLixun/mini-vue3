@@ -620,6 +620,15 @@ var VueReactivity = (() => {
   }
 
   // packages/runtime-core/src/componentPublicInstance.ts
+  function getPublicInstance(i) {
+    if (i === null) {
+      return null;
+    }
+    if (isStatefulComponent(i)) {
+      return getExposeProxy(i) || i.proxy;
+    }
+    return getPublicInstance(i.parent);
+  }
   var publicPropertiesMap = extend(/* @__PURE__ */ Object.create(null), {
     // 列举几个常用的的 属性
     $: (i) => i,
@@ -630,9 +639,11 @@ var VueReactivity = (() => {
     $slots: (i) => i.slots,
     $refs: (i) => i.refs,
     $emit: (i) => i.emit,
+    $root: (i) => getPublicInstance(i.root),
     $options: (i) => i.type,
     $forceUpdate: (i) => queueJob(i.update),
     $nextTick: (i) => nextTick.bind(i.proxy),
+    // vue3不支持这个写法了
     $watch: () => NOOP
   });
 
@@ -640,6 +651,52 @@ var VueReactivity = (() => {
   var Fragment = Symbol.for("v-fgt");
   var Text = Symbol.for("v-txt");
   var Comment = Symbol.for("v-cmt");
+
+  // packages/runtime-core/src/component.ts
+  var currentInstance = null;
+  var setCurrentInstance = (instance) => currentInstance = instance;
+  var unsetCurrentInstance = () => currentInstance = null;
+  function isStatefulComponent(instance) {
+    return instance.vnode.shapeFlag & 4 /* STATEFUL_COMPONENT */;
+  }
+  function getExposeProxy(instance) {
+    if (instance.exposed) {
+      return (
+        // expose取值，其实就是对exposeProxy
+        instance.exposeProxy || (instance.exposeProxy = new Proxy(instance.exposed, {
+          get(target, key) {
+            if (key in target) {
+              return target[key];
+            } else if (key in publicPropertiesMap) {
+              return publicPropertiesMap[key](instance);
+            }
+          }
+        }))
+      );
+    }
+  }
+
+  // packages/runtime-core/src/apiLifecycle.ts
+  function injectHook(type, hook, target = currentInstance) {
+    if (target) {
+      const hooks = target[type] || (target[type] = []);
+      const wrappedHook = (...args) => {
+        setCurrentInstance(target);
+        const res = callWithErrorHandling(hook, args);
+        unsetCurrentInstance();
+        return res;
+      };
+      hooks.push(wrappedHook);
+      return wrappedHook;
+    }
+  }
+  var createHook = (lifecycle) => (hook, target = currentInstance) => injectHook(lifecycle, (...arrgs) => hook(...arrgs), target);
+  var onBeforeMount = createHook("bm" /* BEFORE_MOUNT */);
+  var onMounted = createHook("m" /* MOUNTED */);
+  var onBeforeUpdate = createHook("bu" /* BEFORE_UPDATE */);
+  var onUpdated = createHook("u" /* UPDATED */);
+  var onBeforeUnmount = createHook("bum" /* BEFORE_UNMOUNT */);
+  var onUnmounted = createHook("um" /* UNMOUNTED */);
 
   // packages/runtime-dom/src/nodeOps.ts
   var nodeOps = {

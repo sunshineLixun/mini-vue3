@@ -1,4 +1,4 @@
-import { shallowReactive, toRaw } from '@vue/reactivity';
+import { shallowReactive } from '@vue/reactivity';
 import { hasOwn, isReservedProp } from '@vue/shared';
 import { ComponentInternalInstance, Data } from './componentRenderUtils';
 

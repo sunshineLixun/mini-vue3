@@ -1052,6 +1052,8 @@ function createComponentInstance(vnode, parent) {
     attrsProxy: null,
     exposeProxy: null,
     setupContext: null,
+    // 沿着父级查找
+    provides: parent ? parent.provides : /* @__PURE__ */ Object.create(null),
     // lifecycle
     bc: null,
     c: null,
@@ -1821,6 +1823,35 @@ function ensureRenderer() {
 var render = (...args) => {
   ensureRenderer().render(...args);
 };
+
+// packages/runtime-core/src/apiInject.ts
+function provide(key, value) {
+  if (!currentInstance) {
+    console.warn(`inject() can only be used inside setup() or functional components.`);
+    return;
+  }
+  let provides = currentInstance.provides;
+  const parentProvides = currentInstance.parent && currentInstance.parent.provides;
+  if (provides === parentProvides) {
+    provides = currentInstance.provides = Object.create(parentProvides);
+  }
+  provides[key] = value;
+}
+function inject(key, defaultValue, treatDefaultAsFactory = false) {
+  var _a;
+  if (!currentInstance) {
+    console.warn(`inject() can only be used inside setup() or functional components.`);
+    return;
+  }
+  const provides = (_a = currentInstance.parent) == null ? void 0 : _a.provides;
+  if (provides && key in provides) {
+    return provides[key];
+  }
+  if (treatDefaultAsFactory && isFunction(defaultValue)) {
+    return defaultValue.call(currentInstance && currentInstance.proxy);
+  }
+  return defaultValue;
+}
 export {
   Comment,
   Fragment,
@@ -1842,6 +1873,7 @@ export {
   getCurrentInstance,
   getCurrentScope,
   h,
+  inject,
   isProxy,
   isReactive,
   isReadonly,
@@ -1858,6 +1890,7 @@ export {
   onScopeDispose,
   onUnmounted,
   onUpdated,
+  provide,
   proxyRefs,
   queueJob,
   reactive,

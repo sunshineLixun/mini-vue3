@@ -103,6 +103,8 @@ export interface ComponentInternalInstance {
 	// 组件就是一个effect
 	effect: ReactiveEffect;
 
+	provides: Record<string | symbol, any>;
+
 	isMounted: boolean;
 
 	[LifecycleHooks.BEFORE_CREATE]: LifecycleHook;

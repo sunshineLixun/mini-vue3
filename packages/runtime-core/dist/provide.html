@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Document</title>
+	</head>
+	<body>
+		<div id="app"></div>
+		<script type="module">
+			import { h, render, ref, provide, inject } from './runtime-core.esm-bundler.js';
+
+			const GroundSon = {
+				setup() {
+					const name = inject('name', 'GroundSon');
+					return {
+						name
+					};
+				},
+
+				render() {
+					return h('div', `hello ${this.name}`);
+				}
+			};
+
+			const Son = {
+				setup() {
+					provide('name', 'Son');
+				},
+
+				render() {
+					return h(GroundSon);
+				}
+			};
+
+			const Parent = {
+				setup() {
+					provide('name', 'Parent');
+
+					return () => h(Son);
+				}
+			};
+
+			const Root = {
+				setup() {
+					provide('name', 'Root');
+					return () => h(Parent);
+				}
+			};
+
+			render(h(Root), app);
+		</script>
+	</body>
+</html>

@@ -39,7 +39,9 @@
 - [x] nextTick
 - [x] 组件的setup、props、attrs、emit、expose的实现
 - [x] 支持 Vue2组件的data() {}
-- [x] 组件的实例属性实现 $el、$data、$proxy、$slots、.....
+- [x] 组件的实例属性实现 $el、$data、$proxy、$slots
+- [x] provide
+- [x] inject
 
 ## runtime-dom
 

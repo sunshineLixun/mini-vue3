@@ -77,6 +77,9 @@ export function createComponentInstance(
 
 		setupContext: null,
 
+		// 沿着父级查找
+		provides: parent ? parent.provides : Object.create(null),
+
 		// lifecycle
 		bc: null,
 		c: null,
