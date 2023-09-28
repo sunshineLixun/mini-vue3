@@ -1147,6 +1147,9 @@ function getExposeProxy(instance) {
     );
   }
 }
+function getComponentName(Component) {
+  return isFunction(Component) ? Component.displayName || Component.name : Component.name;
+}
 
 // packages/runtime-core/src/componentRenderUtils.ts
 function renderComponentRoot(instance) {
@@ -1824,6 +1827,52 @@ var render = (...args) => {
   ensureRenderer().render(...args);
 };
 
+// packages/runtime-core/src/components/KeepAlive.ts
+var KeepAliveImpl = {
+  name: "KeepAlive",
+  __isKeepAlive: true,
+  props: {
+    include: [String, Array],
+    exclude: [String, Array],
+    max: [String, Number]
+  },
+  setup(props, { slots }) {
+    const instance = getCurrentInstance();
+    const cache = /* @__PURE__ */ new Map();
+    const keys = /* @__PURE__ */ new Set();
+    let pendingCacheKey = null;
+    const cacheSubtree = () => {
+      if (pendingCacheKey != null) {
+        cache.set(pendingCacheKey, instance.subTree);
+      }
+    };
+    onMounted(cacheSubtree);
+    onUpdated(cacheSubtree);
+    return () => {
+      const children = slots.default();
+      if (children.length > 1) {
+        return children;
+      }
+      const rawVNode = children[0];
+      if (!isVNode(rawVNode) || !(rawVNode.shapeFlag & 4 /* STATEFUL_COMPONENT */)) {
+        return rawVNode;
+      }
+      const comp = rawVNode.type;
+      const name = getComponentName(comp);
+      const key = rawVNode.key == null ? comp : rawVNode.key;
+      const cachedVNode = cache.get(key);
+      if (cachedVNode) {
+        keys.delete(key);
+        keys.add(key);
+      } else {
+        keys.add(key);
+      }
+      return rawVNode;
+    };
+  }
+};
+var KeepAlive = KeepAliveImpl;
+
 // packages/runtime-core/src/apiInject.ts
 function provide(key, value) {
   if (!currentInstance) {
@@ -1855,6 +1904,7 @@ function inject(key, defaultValue, treatDefaultAsFactory = false) {
 export {
   Comment,
   Fragment,
+  KeepAlive,
   LifecycleHooks,
   ReactiveEffect,
   ReactiveFlags,

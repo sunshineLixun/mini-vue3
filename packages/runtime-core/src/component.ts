@@ -234,3 +234,7 @@ export function getExposeProxy(instance: ComponentInternalInstance) {
 		);
 	}
 }
+
+export function getComponentName(Component: any) {
+	return isFunction(Component) ? Component.displayName || Component.name : Component.name;
+}

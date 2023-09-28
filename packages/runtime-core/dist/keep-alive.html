@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Document</title>
+	</head>
+	<body>
+		<div id="app"></div>
+		<div id="modal"></div>
+		<script type="module">
+			import { ref, h, render, Fragment, Teleport, Comment, Text, KeepAlive } from './runtime-core.esm-bundler.js';
+
+			// 1
+			// render(
+			// 	h(KeepAlive, () => h('div', 'KeepAlive')),
+			// 	app
+			// );
+
+			// 2
+			const Com = {
+				render() {
+					return h(Fragment, [h('div', 'hello')]);
+				}
+			};
+
+			render(
+				h(KeepAlive, () => h(Com)),
+				app
+			);
+		</script>
+	</body>
+</html>
