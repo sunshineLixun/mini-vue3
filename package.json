@@ -17,6 +17,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/minimist": "^1.2.5",
     "esbuild": "^0.18.5",
     "minimist": "^1.2.8",
     "typescript": "^5.1.3",
