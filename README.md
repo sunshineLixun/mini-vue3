@@ -1,51 +1,52 @@
 # mini-vue3
 
-简版 vue3 实现
 
-启动项目Demo：找到对应的目录下，[liveServer](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) 启动 dist 目录下的 html 文件
+Simplified Vue3 Implementation:
+
+To start the project demo: Locate the corresponding directory and use [liveServer](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) to launch the HTML file in the "dist" directory.
 
 ## reactivity
 
 - [x] reactivity
-- [x] 嵌套 reactive
+- [x] nested reactive
 - [x] readonly
 - [x] effect
 - [x] effect.scheduler
 - [x] effect.stop
-- [x] computed 的实现
-- [x] watch 的实现
-- [x] watchEffect 的实现
-- [x] watch、watchEffect回调函数 onCleanup的实现
-- [x] track 依赖收集
-- [x] trigger 触发依赖
+- [x] computed
+- [x] watch
+- [x] watchEffect 
+- [x] Implementation of the onCleanup callback for watch and watchEffect
+- [x] track
+- [x] trigger
 - [x] isReactive
 - [x] isReadonly
 - [x] isProxy
 - [x] toRaw
-- [x] ref 的实现
-- [x] effectScope 的实现
-- [x] 异步更新\批处理 queueJob
+- [x] ref
+- [x] effectScope
+- [x] Asynchronous update/batch processing with queueJobb
 
 
 ## runtime-core
 
-- [x] h函数实现
-- [x] createVNode实现
-- [x] renderer函数实现
-- [x] 初次挂载element实现
-- [x] patchElement (普通tag标签、Component、Text、Common、Fragment)
-- [x] diff算法
-- [x] 组件的挂载、更新流程
+- [x] Implementation of the h function
+- [x] Implementation of createVNode
+- [x] Implementation of the renderer function
+- [x] Initial mounting of elements
+- [x] patchElement (regular tag elements, components, text nodes, comments, fragments)
+- [x] diff
+- [x] Mounting and update process of components
 - [x] nextTick
-- [x] 组件的setup、props、attrs、emit、expose的实现
-- [x] 支持 Vue2组件的data() {}
-- [x] 组件的实例属性实现 $el、$data、$proxy、$slots
+- [x] Implementation of component setup, props, attrs, emit, expose
+- [x] Support for Vue2-style component data() {}
+- [x] Implementation of component instance properties: $el, $data, $proxy, $slots
 - [x] provide
 - [x] inject
 
 ## runtime-dom
 
-- [x] dom操作实现
+- [x] DOM manipulation implementation
 - [x] event
 - [x] class
 - [x] style
